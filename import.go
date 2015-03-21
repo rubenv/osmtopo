@@ -61,11 +61,9 @@ func (i *Import) importCoords() {
 			continue
 		}
 
-		for _, n := range arr {
-			err := i.Store.addNewNode(n)
-			if err != nil {
-				i.err = err
-			}
+		err := i.Store.addNewNodes(arr)
+		if err != nil {
+			i.err = err
 		}
 	}
 }
@@ -81,11 +79,9 @@ func (i *Import) importNodes() {
 			continue
 		}
 
-		for _, n := range arr {
-			err := i.Store.addNewNode(n)
-			if err != nil {
-				i.err = err
-			}
+		err := i.Store.addNewNodes(arr)
+		if err != nil {
+			i.err = err
 		}
 	}
 }
@@ -101,11 +97,9 @@ func (i *Import) importWays() {
 			continue
 		}
 
-		for _, n := range arr {
-			err := i.Store.addNewWay(n)
-			if err != nil {
-				i.err = err
-			}
+		err := i.Store.addNewWays(arr)
+		if err != nil {
+			i.err = err
 		}
 	}
 }
@@ -121,11 +115,9 @@ func (i *Import) importRelations() {
 			continue
 		}
 
-		for _, n := range arr {
-			err := i.Store.addNewRelation(n)
-			if err != nil {
-				i.err = err
-			}
+		err := i.Store.addNewRelations(arr)
+		if err != nil {
+			i.err = err
 		}
 	}
 }

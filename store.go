@@ -48,33 +48,44 @@ func (s *Store) Import(file string) error {
 	return i.Run()
 }
 
-func (s *Store) addNewNode(n element.Node) error {
-	//log.Printf("N: %#v\n", n)
-	err := s.put(fmt.Sprintf("node/%d", n.Id), []byte("1"))
+func (s *Store) addNewNodes(arr []element.Node) error {
+	wb := levigo.NewWriteBatch()
+	defer wb.Close()
+	for _, n := range arr {
+		wb.Put([]byte(fmt.Sprintf("node/%d", n.Id)), []byte("1"))
+	}
+	err := s.db.Write(s.wo, wb)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (s *Store) addNewWay(w element.Way) error {
-	//log.Printf("W: %#v\n", w)
-	err := s.put(fmt.Sprintf("way/%d", w.Id), []byte("1"))
+func (s *Store) addNewWays(arr []element.Way) error {
+	wb := levigo.NewWriteBatch()
+	defer wb.Close()
+	for _, n := range arr {
+		wb.Put([]byte(fmt.Sprintf("way/%d", n.Id)), []byte("1"))
+	}
+	err := s.db.Write(s.wo, wb)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (s *Store) addNewRelation(r element.Relation) error {
-	//log.Printf("R: %#v\n", r)
-	err := s.put(fmt.Sprintf("relation/%d", r.Id), []byte("1"))
+func (s *Store) addNewRelations(arr []element.Relation) error {
+	wb := levigo.NewWriteBatch()
+	defer wb.Close()
+	for _, n := range arr {
+		wb.Put([]byte(fmt.Sprintf("relation/%d", n.Id)), []byte("1"))
+	}
+	err := s.db.Write(s.wo, wb)
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (s *Store) put(key string, value []byte) error {
-	return s.db.Put(s.wo, []byte(key), value)
-}
+// TODO: Store actual data with protobufs
+// TODO: Add indexing hooks for relations
