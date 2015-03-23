@@ -80,7 +80,7 @@ func (s *Store) addNewNodes(arr []*Node) error {
 		if err != nil {
 			return err
 		}
-		wb.Put([]byte(fmt.Sprintf("node/%d", n.Id)), data)
+		wb.Put([]byte(fmt.Sprintf("node/%d", n.GetId())), data)
 	}
 	return s.db.Write(s.wo, wb)
 }
@@ -88,7 +88,7 @@ func (s *Store) addNewNodes(arr []*Node) error {
 func (s *Store) removeNode(n *Node) error {
 	wb := levigo.NewWriteBatch()
 	defer wb.Close()
-	wb.Delete([]byte(fmt.Sprintf("node/%d", n.Id)))
+	wb.Delete([]byte(fmt.Sprintf("node/%d", n.GetId())))
 	return s.db.Write(s.wo, wb)
 }
 
@@ -100,7 +100,7 @@ func (s *Store) addNewWays(arr []*Way) error {
 		if err != nil {
 			return err
 		}
-		wb.Put([]byte(fmt.Sprintf("way/%d", n.Id)), data)
+		wb.Put([]byte(fmt.Sprintf("way/%d", n.GetId())), data)
 	}
 	return s.db.Write(s.wo, wb)
 }
@@ -108,7 +108,7 @@ func (s *Store) addNewWays(arr []*Way) error {
 func (s *Store) removeWay(n *Way) error {
 	wb := levigo.NewWriteBatch()
 	defer wb.Close()
-	wb.Delete([]byte(fmt.Sprintf("way/%d", n.Id)))
+	wb.Delete([]byte(fmt.Sprintf("way/%d", n.GetId())))
 	return s.db.Write(s.wo, wb)
 }
 
@@ -120,7 +120,7 @@ func (s *Store) addNewRelations(arr []*Relation) error {
 		if err != nil {
 			return err
 		}
-		wb.Put([]byte(fmt.Sprintf("relation/%d", n.Id)), data)
+		wb.Put([]byte(fmt.Sprintf("relation/%d", n.GetId())), data)
 
 		s.indexer.newRelation(n, wb)
 	}
@@ -131,7 +131,7 @@ func (s *Store) removeRelation(n *Relation) error {
 	wb := levigo.NewWriteBatch()
 	defer wb.Close()
 	s.indexer.removeRelation(n, wb)
-	wb.Delete([]byte(fmt.Sprintf("relation/%d", n.Id)))
+	wb.Delete([]byte(fmt.Sprintf("relation/%d", n.GetId())))
 	return s.db.Write(s.wo, wb)
 }
 
@@ -139,6 +139,10 @@ func (s *Store) GetNode(id string) (*Node, error) {
 	n, err := s.db.Get(s.ro, []byte(fmt.Sprintf("node/%s", id)))
 	if err != nil {
 		return nil, err
+	}
+
+	if len(n) == 0 {
+		return nil, nil
 	}
 
 	node := &Node{}
@@ -156,6 +160,10 @@ func (s *Store) GetWay(id string) (*Way, error) {
 		return nil, err
 	}
 
+	if len(n) == 0 {
+		return nil, nil
+	}
+
 	way := &Way{}
 	err = proto.Unmarshal(n, way)
 	if err != nil {
@@ -169,6 +177,10 @@ func (s *Store) GetRelation(id string) (*Relation, error) {
 	n, err := s.db.Get(s.ro, []byte(fmt.Sprintf("relation/%s", id)))
 	if err != nil {
 		return nil, err
+	}
+
+	if len(n) == 0 {
+		return nil, nil
 	}
 
 	rel := &Relation{}

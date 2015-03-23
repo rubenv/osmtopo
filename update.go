@@ -1,10 +1,8 @@
 package osmtopo
 
 import (
-	"fmt"
 	"strconv"
 
-	"github.com/kr/pretty"
 	"github.com/omniscale/imposm3/diff/parser"
 )
 
@@ -36,7 +34,6 @@ func (u *Update) Run() error {
 }
 
 func (u *Update) process(c parser.DiffElem) error {
-	fmt.Printf("%# v\n", pretty.Formatter(c))
 	if c.Del {
 		if c.Node != nil {
 			n, err := u.Store.GetNode(strconv.FormatInt(c.Node.Id, 10))
@@ -44,9 +41,11 @@ func (u *Update) process(c parser.DiffElem) error {
 				return err
 			}
 
-			err = u.Store.removeNode(n)
-			if err != nil {
-				return err
+			if n != nil {
+				err = u.Store.removeNode(n)
+				if err != nil {
+					return err
+				}
 			}
 		}
 		if c.Way != nil {
@@ -55,9 +54,11 @@ func (u *Update) process(c parser.DiffElem) error {
 				return err
 			}
 
-			err = u.Store.removeWay(n)
-			if err != nil {
-				return err
+			if n != nil {
+				err = u.Store.removeWay(n)
+				if err != nil {
+					return err
+				}
 			}
 		}
 		if c.Rel != nil {
@@ -66,9 +67,11 @@ func (u *Update) process(c parser.DiffElem) error {
 				return err
 			}
 
-			err = u.Store.removeRelation(n)
-			if err != nil {
-				return err
+			if n != nil {
+				err = u.Store.removeRelation(n)
+				if err != nil {
+					return err
+				}
 			}
 		}
 
