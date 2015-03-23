@@ -14,21 +14,18 @@ type Import struct {
 	wg  sync.WaitGroup
 	err error
 
-	coords    chan []element.Node
 	nodes     chan []element.Node
 	ways      chan []element.Way
 	relations chan []element.Relation
 }
 
 func (i *Import) Run() error {
-	i.coords = make(chan []element.Node, 100)
 	i.nodes = make(chan []element.Node, 100)
 	i.ways = make(chan []element.Way, 100)
 	i.relations = make(chan []element.Relation, 100)
 
-	i.wg.Add(4)
+	i.wg.Add(3)
 
-	go i.importCoords()
 	go i.importNodes()
 	go i.importWays()
 	go i.importRelations()
@@ -40,32 +37,13 @@ func (i *Import) Run() error {
 }
 
 func (i *Import) startParser() {
-	parser := pbf.NewParser(i.File, i.coords, i.nodes, i.ways, i.relations)
+	parser := pbf.NewParser(i.File, i.nodes, i.nodes, i.ways, i.relations)
 	parser.Start()
 	parser.Close()
 
-	close(i.coords)
 	close(i.nodes)
 	close(i.ways)
 	close(i.relations)
-}
-
-func (i *Import) importCoords() {
-	defer i.wg.Done()
-	for {
-		arr, ok := <-i.coords
-		if !ok {
-			return
-		}
-		if i.err != nil {
-			continue
-		}
-
-		err := i.Store.addNewNodes(arr)
-		if err != nil {
-			i.err = err
-		}
-	}
 }
 
 func (i *Import) importNodes() {
