@@ -4,10 +4,10 @@ package osmtopo
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/jmhodges/levigo"
-	"github.com/omniscale/imposm3/element"
 	"github.com/omniscale/imposm3/parser/pbf"
 )
 
@@ -21,6 +21,11 @@ type Store struct {
 }
 
 func NewStore(path string) (*Store, error) {
+	err := os.MkdirAll(path+"/ldb", 0755)
+	if err != nil {
+		return nil, err
+	}
+
 	store := &Store{
 		path: path,
 	}
@@ -33,7 +38,7 @@ func NewStore(path string) (*Store, error) {
 	opts.SetCache(levigo.NewLRUCache(3 << 30))
 	opts.SetCreateIfMissing(true)
 	opts.SetFilterPolicy(levigo.NewBloomFilter(10))
-	db, err := levigo.Open(path, opts)
+	db, err := levigo.Open(path+"/ldb", opts)
 	if err != nil {
 		return nil, err
 	}
@@ -58,90 +63,60 @@ func (s *Store) Import(file string) error {
 	return i.Run()
 }
 
-func (s *Store) addNewNodes(arr []element.Node) error {
+func (s *Store) ApplyChange(file string) error {
+	u := Update{
+		Store:    s,
+		Filename: file,
+	}
+
+	return u.Run()
+}
+
+func (s *Store) addNewNodes(arr []*Node) error {
 	wb := levigo.NewWriteBatch()
 	defer wb.Close()
 	for _, n := range arr {
-		node := &Node{
-			Id:  proto.Int64(n.Id),
-			Lat: proto.Float64(n.Lat),
-			Lon: proto.Float64(n.Long),
-		}
-		tags := []*TagEntry{}
-		for k, v := range n.Tags {
-			tags = append(tags, &TagEntry{
-				Key:   proto.String(k),
-				Value: proto.String(v),
-			})
-		}
-		node.Tags = tags
-		data, err := proto.Marshal(node)
+		data, err := proto.Marshal(n)
 		if err != nil {
 			return err
 		}
 		wb.Put([]byte(fmt.Sprintf("node/%d", n.Id)), data)
 	}
-	err := s.db.Write(s.wo, wb)
-	if err != nil {
-		return err
-	}
-	return nil
+	return s.db.Write(s.wo, wb)
 }
 
-func (s *Store) addNewWays(arr []element.Way) error {
+func (s *Store) removeNode(n *Node) error {
+	wb := levigo.NewWriteBatch()
+	defer wb.Close()
+	wb.Delete([]byte(fmt.Sprintf("node/%d", n.Id)))
+	return s.db.Write(s.wo, wb)
+}
+
+func (s *Store) addNewWays(arr []*Way) error {
 	wb := levigo.NewWriteBatch()
 	defer wb.Close()
 	for _, n := range arr {
-		way := &Way{
-			Id:   proto.Int64(n.Id),
-			Refs: n.Refs,
-		}
-		tags := []*TagEntry{}
-		for k, v := range n.Tags {
-			tags = append(tags, &TagEntry{
-				Key:   proto.String(k),
-				Value: proto.String(v),
-			})
-		}
-		way.Tags = tags
-		data, err := proto.Marshal(way)
+		data, err := proto.Marshal(n)
 		if err != nil {
 			return err
 		}
 		wb.Put([]byte(fmt.Sprintf("way/%d", n.Id)), data)
 	}
-	err := s.db.Write(s.wo, wb)
-	if err != nil {
-		return err
-	}
-	return nil
+	return s.db.Write(s.wo, wb)
 }
 
-func (s *Store) addNewRelations(arr []element.Relation) error {
+func (s *Store) removeWay(n *Way) error {
+	wb := levigo.NewWriteBatch()
+	defer wb.Close()
+	wb.Delete([]byte(fmt.Sprintf("way/%d", n.Id)))
+	return s.db.Write(s.wo, wb)
+}
+
+func (s *Store) addNewRelations(arr []*Relation) error {
 	wb := levigo.NewWriteBatch()
 	defer wb.Close()
 	for _, n := range arr {
-		rel := &Relation{
-			Id: proto.Int64(n.Id),
-		}
-		tags := []*TagEntry{}
-		for k, v := range n.Tags {
-			tags = append(tags, &TagEntry{
-				Key:   proto.String(k),
-				Value: proto.String(v),
-			})
-		}
-		rel.Tags = tags
-		members := []*MemberEntry{}
-		for _, v := range n.Members {
-			members = append(members, &MemberEntry{
-				Id:   proto.Int64(v.Id),
-				Type: proto.Int32(int32(v.Type)),
-				Role: proto.String(v.Role),
-			})
-		}
-		rel.Members = members
-		data, err := proto.Marshal(rel)
+		data, err := proto.Marshal(n)
 		if err != nil {
 			return err
 		}
@@ -149,12 +124,15 @@ func (s *Store) addNewRelations(arr []element.Relation) error {
 
 		s.indexer.newRelation(n, wb)
 	}
+	return s.db.Write(s.wo, wb)
+}
 
-	err := s.db.Write(s.wo, wb)
-	if err != nil {
-		return err
-	}
-	return nil
+func (s *Store) removeRelation(n *Relation) error {
+	wb := levigo.NewWriteBatch()
+	defer wb.Close()
+	s.indexer.removeRelation(n, wb)
+	wb.Delete([]byte(fmt.Sprintf("relation/%d", n.Id)))
+	return s.db.Write(s.wo, wb)
 }
 
 func (s *Store) GetNode(id string) (*Node, error) {

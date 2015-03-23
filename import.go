@@ -57,7 +57,11 @@ func (i *Import) importNodes() {
 			continue
 		}
 
-		err := i.Store.addNewNodes(arr)
+		nodes := []*Node{}
+		for _, n := range arr {
+			nodes = append(nodes, NodeFromEl(n))
+		}
+		err := i.Store.addNewNodes(nodes)
 		if err != nil {
 			i.err = err
 		}
@@ -75,7 +79,11 @@ func (i *Import) importWays() {
 			continue
 		}
 
-		err := i.Store.addNewWays(arr)
+		ways := []*Way{}
+		for _, n := range arr {
+			ways = append(ways, WayFromEl(n))
+		}
+		err := i.Store.addNewWays(ways)
 		if err != nil {
 			i.err = err
 		}
@@ -93,7 +101,11 @@ func (i *Import) importRelations() {
 			continue
 		}
 
-		err := i.Store.addNewRelations(arr)
+		rels := []*Relation{}
+		for _, n := range arr {
+			rels = append(rels, RelationFromEl(n))
+		}
+		err := i.Store.addNewRelations(rels)
 		if err != nil {
 			i.err = err
 		}
