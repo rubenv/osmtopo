@@ -15,22 +15,26 @@ func (u *Update) Run() error {
 	changes, err := parser.Parse(u.Filename)
 
 	for {
-		c, ok := <-changes
-		if !ok {
-			break
-		}
+		select {
+		case c, ok := <-changes:
+			if !ok {
+				break
+			}
 
-		err := u.process(c)
-		if err != nil {
-			return err
+			err := u.process(c)
+			if err != nil {
+				return err
+			}
+		case e, ok := <-err:
+			if !ok {
+				err = nil
+			}
+			return e
 		}
-	}
-
-	if e, ok := <-err; ok && e != nil {
-		return e
 	}
 
 	return nil
+
 }
 
 func (u *Update) process(c parser.DiffElem) error {
