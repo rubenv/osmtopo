@@ -1,7 +1,9 @@
 package osmtopo
 
 import (
+	"fmt"
 	"sync"
+	"time"
 
 	"github.com/omniscale/imposm3/element"
 	"github.com/omniscale/imposm3/parser/pbf"
@@ -11,29 +13,62 @@ type Import struct {
 	Store *Store
 	File  *pbf.Pbf
 
-	wg  sync.WaitGroup
-	err error
+	started time.Time
+	running bool
+	wg      sync.WaitGroup
+	err     error
 
 	nodes     chan []element.Node
 	ways      chan []element.Way
 	relations chan []element.Relation
+
+	nodeCount     int64
+	wayCount      int64
+	relationCount int64
 }
 
 func (i *Import) Run() error {
-	i.nodes = make(chan []element.Node, 100)
-	i.ways = make(chan []element.Way, 100)
-	i.relations = make(chan []element.Relation, 100)
+	i.nodes = make(chan []element.Node, 10000)
+	i.ways = make(chan []element.Way, 10000)
+	i.relations = make(chan []element.Relation, 10000)
 
 	i.wg.Add(3)
+	i.running = true
+	i.started = time.Now()
 
 	go i.importNodes()
 	go i.importWays()
 	go i.importRelations()
 	go i.startParser()
+	go i.updateProgress()
 
 	i.wg.Wait()
+	i.running = false
 
 	return i.err
+}
+
+func (i *Import) updateProgress() {
+	prevNodeCount := int64(0)
+	prevWayCount := int64(0)
+	prevRelationCount := int64(0)
+	tick := time.Tick(1 * time.Second)
+
+	for i.running {
+		executing := time.Now().Sub(i.started)
+		newNodes := i.nodeCount - prevNodeCount
+		newWays := i.wayCount - prevWayCount
+		newRelations := i.relationCount - prevRelationCount
+
+		fmt.Printf("\r[N: %12d (%7d/s)] [W: %12d (%7d/s)] [R: %12d (%7d/s)] %s", i.nodeCount, newNodes, i.wayCount, newWays, i.relationCount, newRelations, executing)
+
+		prevNodeCount += newNodes
+		prevWayCount += newWays
+		prevRelationCount += newRelations
+		<-tick
+	}
+
+	fmt.Println()
 }
 
 func (i *Import) startParser() {
@@ -65,6 +100,7 @@ func (i *Import) importNodes() {
 		if err != nil {
 			i.err = err
 		}
+		i.nodeCount += int64(len(arr))
 	}
 }
 
@@ -87,6 +123,7 @@ func (i *Import) importWays() {
 		if err != nil {
 			i.err = err
 		}
+		i.wayCount += int64(len(arr))
 	}
 }
 
@@ -109,5 +146,6 @@ func (i *Import) importRelations() {
 		if err != nil {
 			i.err = err
 		}
+		i.relationCount += int64(len(arr))
 	}
 }
