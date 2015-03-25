@@ -50,6 +50,10 @@ func NewStore(path string) (*Store, error) {
 	return store, nil
 }
 
+func (s *Store) Close() {
+	s.db.Close()
+}
+
 func (s *Store) Import(file string) error {
 	f, err := pbf.Open(file)
 	if err != nil {
@@ -70,6 +74,10 @@ func (s *Store) ApplyChange(file string) error {
 	}
 
 	return u.Run()
+}
+
+func (s *Store) Reindex() error {
+	return s.indexer.reindex()
 }
 
 func (s *Store) addNewNodes(arr []*Node) error {

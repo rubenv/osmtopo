@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"runtime"
@@ -16,17 +17,26 @@ func main() {
 		os.Exit(1)
 	}
 
-	store, err := osmtopo.NewStore(os.Args[1])
+	err := do()
 	if err != nil {
-		log.Printf("Failed to open store: %s\n", err.Error())
-		os.Exit(1)
-	}
-
-	err = store.Import(os.Args[2])
-	if err != nil {
-		log.Printf("Failed to import: %s\n", err.Error())
+		log.Printf(err.Error())
 		os.Exit(1)
 	}
 
 	os.Exit(0)
+}
+
+func do() error {
+	store, err := osmtopo.NewStore(os.Args[1])
+	if err != nil {
+		return fmt.Errorf("Failed to open store: %s\n", err.Error())
+	}
+	defer store.Close()
+
+	err = store.Import(os.Args[2])
+	if err != nil {
+		return fmt.Errorf("Failed to import: %s\n", err.Error())
+	}
+
+	return nil
 }
