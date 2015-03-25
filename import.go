@@ -28,9 +28,9 @@ type Import struct {
 }
 
 func (i *Import) Run() error {
-	i.nodes = make(chan []element.Node, 10000)
-	i.ways = make(chan []element.Way, 10000)
-	i.relations = make(chan []element.Relation, 10000)
+	i.nodes = make(chan []element.Node, 1000)
+	i.ways = make(chan []element.Way, 1000)
+	i.relations = make(chan []element.Relation, 1000)
 
 	i.wg.Add(3)
 	i.running = true
