@@ -5,7 +5,7 @@ go:
     - tip
 
 before_install:
-    - sudo apt-get install libleveldb-dev
+    - sudo apt-get install libleveldb-dev libgeos-dev
 
 script:
     - go test -v -bench=. ./...
