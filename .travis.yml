@@ -4,5 +4,8 @@ go:
     - 1.4
     - tip
 
+before_install:
+    - sudo apt-get install libleveldb-dev
+
 script:
     - go test -v -bench=. ./...
