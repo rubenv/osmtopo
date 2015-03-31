@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 
 	"github.com/kr/pretty"
 	"github.com/rubenv/osmtopo"
@@ -31,7 +32,12 @@ func do() error {
 	}
 	defer store.Close()
 
-	way, err := store.GetWay(os.Args[2])
+	id, err := strconv.ParseInt(os.Args[2], 10, 64)
+	if err != nil {
+		return err
+	}
+
+	way, err := store.GetWay(id)
 	if err != nil {
 		return fmt.Errorf("Failed to get way: %s\n", err.Error())
 	}

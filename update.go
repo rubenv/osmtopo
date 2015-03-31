@@ -1,10 +1,6 @@
 package osmtopo
 
-import (
-	"strconv"
-
-	"github.com/omniscale/imposm3/diff/parser"
-)
+import "github.com/omniscale/imposm3/diff/parser"
 
 type Update struct {
 	Store    *Store
@@ -40,7 +36,7 @@ func (u *Update) Run() error {
 func (u *Update) process(c parser.DiffElem) error {
 	if c.Del {
 		if c.Node != nil {
-			n, err := u.Store.GetNode(strconv.FormatInt(c.Node.Id, 10))
+			n, err := u.Store.GetNode(c.Node.Id)
 			if err != nil {
 				return err
 			}
@@ -53,7 +49,7 @@ func (u *Update) process(c parser.DiffElem) error {
 			}
 		}
 		if c.Way != nil {
-			n, err := u.Store.GetWay(strconv.FormatInt(c.Way.Id, 10))
+			n, err := u.Store.GetWay(c.Way.Id)
 			if err != nil {
 				return err
 			}
@@ -66,7 +62,7 @@ func (u *Update) process(c parser.DiffElem) error {
 			}
 		}
 		if c.Rel != nil {
-			n, err := u.Store.GetRelation(strconv.FormatInt(c.Rel.Id, 10))
+			n, err := u.Store.GetRelation(c.Rel.Id)
 			if err != nil {
 				return err
 			}
@@ -78,7 +74,6 @@ func (u *Update) process(c parser.DiffElem) error {
 				}
 			}
 		}
-
 	}
 
 	if c.Add {

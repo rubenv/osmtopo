@@ -143,8 +143,8 @@ func (s *Store) removeRelation(n *Relation) error {
 	return s.db.Write(s.wo, wb)
 }
 
-func (s *Store) GetNode(id string) (*Node, error) {
-	n, err := s.db.Get(s.ro, []byte(fmt.Sprintf("node/%s", id)))
+func (s *Store) GetNode(id int64) (*Node, error) {
+	n, err := s.db.Get(s.ro, []byte(fmt.Sprintf("node/%d", id)))
 	if err != nil {
 		return nil, err
 	}
@@ -162,8 +162,8 @@ func (s *Store) GetNode(id string) (*Node, error) {
 	return node, nil
 }
 
-func (s *Store) GetWay(id string) (*Way, error) {
-	n, err := s.db.Get(s.ro, []byte(fmt.Sprintf("way/%s", id)))
+func (s *Store) GetWay(id int64) (*Way, error) {
+	n, err := s.db.Get(s.ro, []byte(fmt.Sprintf("way/%d", id)))
 	if err != nil {
 		return nil, err
 	}
@@ -181,8 +181,8 @@ func (s *Store) GetWay(id string) (*Way, error) {
 	return way, nil
 }
 
-func (s *Store) GetRelation(id string) (*Relation, error) {
-	n, err := s.db.Get(s.ro, []byte(fmt.Sprintf("relation/%s", id)))
+func (s *Store) GetRelation(id int64) (*Relation, error) {
+	n, err := s.db.Get(s.ro, []byte(fmt.Sprintf("relation/%d", id)))
 	if err != nil {
 		return nil, err
 	}

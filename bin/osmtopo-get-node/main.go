@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strconv"
 
 	"github.com/kr/pretty"
 	"github.com/rubenv/osmtopo"
@@ -31,7 +32,12 @@ func do() error {
 	}
 	defer store.Close()
 
-	node, err := store.GetNode(os.Args[2])
+	id, err := strconv.ParseInt(os.Args[2], 10, 64)
+	if err != nil {
+		return err
+	}
+
+	node, err := store.GetNode(id)
 	if err != nil {
 		return fmt.Errorf("Failed to get node: %s\n", err.Error())
 	}
