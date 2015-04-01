@@ -46,6 +46,7 @@ func NewStore(path string) (*Store, error) {
 
 	store.wo = levigo.NewWriteOptions()
 	store.ro = levigo.NewReadOptions()
+	//store.ro.SetFillCache(false)
 
 	return store, nil
 }
