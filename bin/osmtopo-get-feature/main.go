@@ -7,6 +7,7 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/paulsmith/gogeos/geos"
 	"github.com/rubenv/osmtopo"
 	"github.com/rubenv/osmtopo/simplify"
 )
@@ -68,44 +69,80 @@ func do() error {
 	outerParts = simplify.Reduce(outerParts)
 	innerParts = simplify.Reduce(innerParts)
 
-	if len(innerParts) > 0 {
-		panic("No support for inner rings yet!")
+	outerPolys, err := toGeom(store, outerParts)
+	if err != nil {
+		return err
+	}
+	innerPolys, err := toGeom(store, innerParts)
+	if err != nil {
+		return err
 	}
 
-	properties := map[string]string{}
-	name, exists := relation.GetTag("name")
-	if exists {
-		properties["name"] = name
-	}
+	polygons := make([]*geos.Geometry, 0)
+	for _, shell := range outerPolys {
+		pshell := geos.PrepareGeometry(shell)
 
-	feat := &Feature{
-		Id:         relation.GetId(),
-		Type:       "Feature",
-		Properties: properties,
-	}
+		// Find holes
+		holes := make([][]geos.Coord, 0)
+		for i := 0; i < len(innerPolys); i++ {
+			hole := innerPolys[i]
+			c, err := pshell.Contains(hole)
+			if err != nil {
+				return err
+			}
+			if c {
+				s, err := hole.Shell()
+				if err != nil {
+					return err
+				}
 
-	if len(outerParts) == 1 {
-		c, err := expandPoly(store, outerParts[0])
+				c, err := s.Coords()
+				if err != nil {
+					return err
+				}
+
+				holes = append(holes, c)
+				innerPolys = append(innerPolys[:i], innerPolys[i+1:]...)
+				i-- // Counter-act the increment at the end of the iteration
+			}
+		}
+
+		s, err := shell.Shell()
 		if err != nil {
 			return err
 		}
 
-		feat.Geometry = &Polygon{
-			Geometry: Geometry{
-				Type: "Polygon",
-			},
-			Coordinates: [][]Coordinate{c},
+		scoords, err := s.Coords()
+		if err != nil {
+			return err
 		}
+
+		polygon, err := geos.NewPolygon(scoords, holes...)
+		if err != nil {
+			return err
+		}
+		polygons = append(polygons, polygon)
+	}
+
+	log.Println(len(innerPolys))
+
+	var feat *geos.Geometry
+	if len(polygons) == 1 {
+		feat = polygons[0]
 	} else {
-		panic("Multiple polygons")
+		f, err := geos.NewCollection(geos.MULTIPOLYGON, polygons...)
+		if err != nil {
+			return err
+		}
+		feat = f
 	}
 
-	fc := &FeatureCollection{
-		Type:     "FeatureCollection",
-		Features: []*Feature{feat},
+	out, err := toGeoJSON(feat)
+	if err != nil {
+		return err
 	}
 
-	b, err := json.Marshal(fc)
+	b, err := json.Marshal(out)
 	if err != nil {
 		return err
 	}
@@ -114,38 +151,184 @@ func do() error {
 	return nil
 }
 
-func expandPoly(store *osmtopo.Store, coords []int64) ([]Coordinate, error) {
-	result := make([]Coordinate, len(coords))
+func toGeom(store *osmtopo.Store, coords [][]int64) ([]*geos.Geometry, error) {
+	linestrings := make([]*geos.Geometry, len(coords))
+	for i, v := range coords {
+		ls, err := expandPoly(store, v)
+		if err != nil {
+			return nil, err
+		}
+		linestrings[i] = ls
+	}
+
+	return linestrings, nil
+}
+
+func expandPoly(store *osmtopo.Store, coords []int64) (*geos.Geometry, error) {
+	points := make([]geos.Coord, len(coords))
 	for i, c := range coords {
 		node, err := store.GetNode(c)
 		if err != nil {
 			return nil, err
 		}
-		result[i][0] = node.GetLon()
-		result[i][1] = node.GetLat()
+		points[i] = geos.Coord{X: node.GetLon(), Y: node.GetLat()}
 	}
-	return result, nil
+
+	return geos.NewPolygon(points)
 }
 
-type FeatureCollection struct {
-	Type     string     `json:"type"`
-	Features []*Feature `json:"features"`
+func toGeoJSON(geom *geos.Geometry) (*Feature, error) {
+	t, err := geom.Type()
+	if err != nil {
+		return nil, err
+	}
+
+	switch t {
+	case geos.GEOMETRYCOLLECTION:
+		c, err := geom.NGeometry()
+		if err != nil {
+			return nil, err
+		}
+
+		features := make([]*Feature, c)
+		for i := 0; i < c; i++ {
+			g, err := geom.Geometry(i)
+			if err != nil {
+				return nil, err
+			}
+
+			f, err := toGeoJSON(g)
+			if err != nil {
+				return nil, err
+			}
+
+			features[i] = f
+		}
+
+		fc := &Feature{
+			Type:     "FeatureCollection",
+			Features: features,
+		}
+
+		return fc, nil
+	case geos.POLYGON:
+		rings, err := polyToRings(geom)
+		if err != nil {
+			return nil, err
+		}
+
+		p := &Feature{
+			Type: "Feature",
+			Geometry: &Geometry{
+				Type:        "Polygon",
+				Coordinates: rings,
+			},
+		}
+
+		return p, nil
+	case geos.MULTIPOLYGON:
+		c, err := geom.NGeometry()
+		if err != nil {
+			return nil, err
+		}
+
+		rings := make([][][]Coordinate, c)
+
+		for i := 0; i < c; i++ {
+			g, err := geom.Geometry(i)
+			if err != nil {
+				return nil, err
+			}
+
+			r, err := polyToRings(g)
+			if err != nil {
+				return nil, err
+			}
+
+			rings[i] = r
+		}
+
+		p := &Feature{
+			Type: "Feature",
+			Geometry: &Geometry{
+				Type:        "MultiPolygon",
+				Coordinates: rings,
+			},
+		}
+
+		return p, nil
+	default:
+		return nil, fmt.Errorf("Unknown geometry type: %v", t)
+	}
+}
+
+func polyToRings(geom *geos.Geometry) ([][]Coordinate, error) {
+	shell, err := geom.Shell()
+	if err != nil {
+		return nil, err
+	}
+	c, err := toCoordinates(shell)
+	if err != nil {
+		return nil, err
+	}
+
+	holes, err := geom.Holes()
+	if err != nil {
+		return nil, err
+	}
+
+	rings := make([][]Coordinate, len(holes)+1)
+	rings[0] = c
+	for i, h := range holes {
+		c, err := toCoordinates(h)
+		if err != nil {
+			return nil, err
+		}
+		rings[i+1] = c
+	}
+
+	return rings, nil
+}
+
+func toCoordinates(ring *geos.Geometry) ([]Coordinate, error) {
+	n, err := ring.NPoint()
+	if err != nil {
+		return nil, err
+	}
+
+	coords := make([]Coordinate, n)
+	for i := 0; i < n; i++ {
+		p, err := ring.Point(i)
+		if err != nil {
+			return nil, err
+		}
+
+		x, err := p.X()
+		if err != nil {
+			return nil, err
+		}
+
+		y, err := p.Y()
+		if err != nil {
+			return nil, err
+		}
+
+		coords[i] = Coordinate{x, y}
+	}
+	return coords, nil
 }
 
 type Feature struct {
-	Id         int64             `json:"id"`
+	Features   []*Feature        `json:"features,omitempty"`
+	Geometry   *Geometry         `json:"geometry,omitempty"`
+	Id         *int64            `json:"id,omitempty"`
+	Properties map[string]string `json:"properties,omitempty"`
 	Type       string            `json:"type"`
-	Properties map[string]string `json:"properties"`
-	Geometry   interface{}       `json:"geometry"`
 }
 
 type Geometry struct {
-	Type string `json:"type"`
-}
-
-type Polygon struct {
-	Geometry
-	Coordinates [][]Coordinate `json:"coordinates"`
+	Type        string      `json:"type"`
+	Coordinates interface{} `json:"coordinates"`
 }
 
 type Coordinate [2]float64
