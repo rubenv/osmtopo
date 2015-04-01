@@ -80,30 +80,33 @@ func do() error {
 
 	polygons := make([]*geos.Geometry, 0)
 	for _, shell := range outerPolys {
-		pshell := geos.PrepareGeometry(shell)
-
-		// Find holes
 		holes := make([][]geos.Coord, 0)
-		for i := 0; i < len(innerPolys); i++ {
-			hole := innerPolys[i]
-			c, err := pshell.Contains(hole)
-			if err != nil {
-				return err
-			}
-			if c {
-				s, err := hole.Shell()
+
+		if len(innerPolys) > 0 {
+			pshell := geos.PrepareGeometry(shell)
+
+			// Find holes
+			for i := 0; i < len(innerPolys); i++ {
+				hole := innerPolys[i]
+				c, err := pshell.Contains(hole)
 				if err != nil {
 					return err
 				}
+				if c {
+					s, err := hole.Shell()
+					if err != nil {
+						return err
+					}
 
-				c, err := s.Coords()
-				if err != nil {
-					return err
+					c, err := s.Coords()
+					if err != nil {
+						return err
+					}
+
+					holes = append(holes, c)
+					innerPolys = append(innerPolys[:i], innerPolys[i+1:]...)
+					i-- // Counter-act the increment at the end of the iteration
 				}
-
-				holes = append(holes, c)
-				innerPolys = append(innerPolys[:i], innerPolys[i+1:]...)
-				i-- // Counter-act the increment at the end of the iteration
 			}
 		}
 
