@@ -1,11 +1,4 @@
-language: go
-
-go:
-    - 1.4
-    - tip
-
-before_install:
-    - sudo apt-get install libleveldb-dev libgeos-dev
-
-script:
-    - go test -v -bench=. ./...
+language: shell
+sudo: required
+services:
+    - docker
