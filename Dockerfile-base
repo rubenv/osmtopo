@@ -16,5 +16,5 @@ RUN dnf -y install geos-devel zlib-devel bzip2-devel gcc-c++ make wget tar findu
     cd rocksdb-4.2 && \
     make static_lib shared_lib install install-shared install-headers && \
     cd .. && rm -rf rocksdb-4.2* && \
-    dnf -y remove gcc-c++ tar wget make && \
+    dnf -y remove tar wget make && \
     dnf clean all
