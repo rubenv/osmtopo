@@ -1,0 +1,7 @@
+FROM rubenv/osmtopo-base
+
+RUN dnf -y install golang && \
+    dnf clean all
+
+ENV GOPATH /go
+WORKDIR /go/src/github.com/rubenv/osmtopo

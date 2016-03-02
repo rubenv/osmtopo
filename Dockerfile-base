@@ -1,0 +1,15 @@
+FROM fedora:23
+
+RUN dnf -y install geos-devel snappy-devel wget tar gcc-c++ make && \
+    wget http://hyperdex.org/src/hyperleveldb-1.2.2.tar.gz && \
+    tar xzf hyperleveldb-1.2.2.tar.gz && \
+    cd hyperleveldb-1.2.2 && \
+    ./configure && \
+    make && \
+    make install && \
+    cd .. && \
+    rm -rf hyperleveldb-1.2.2 && \
+    cp /usr/local/lib/pkgconfig/hyperleveldb.pc /usr/local/lib/pkgconfig/leveldb.pc && \
+    ln -s /usr/local/lib/pkgconfig/libhyperleveldb.so /usr/local/lib/pkgconfig/libleveldb.so && \
+    dnf -y remove gcc-c++ make tar wget && \
+    dnf clean all

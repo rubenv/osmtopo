@@ -1,0 +1,3 @@
+FROM rubenv/osmtopo-base
+
+ADD * /usr/local/bin/
