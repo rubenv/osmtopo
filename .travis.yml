@@ -4,6 +4,7 @@ services:
     - docker
 
 script:
+    - set -e
     - mkdir -p $HOME/go/src/github.com/rubenv/
     - ln -s . $HOME/go/src/github.com/rubenv/osmtopo
     - docker login -e="$DOCKER_EMAIL" -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
