@@ -1,6 +1,6 @@
 .PHONY: all dev binaries container
 
-all: container
+all: container test
 
 base: Dockerfile-base
 	rm -rf tmp/
@@ -22,3 +22,6 @@ binaries: base dev
 container: binaries
 	cp Dockerfile-binaries tmp/Dockerfile
 	docker build -t rubenv/osmtopo tmp/
+
+test:
+	docker run -ti --rm -v $(GOPATH)/src:/go/src rubenv/osmtopo-dev go test -v github.com/rubenv/osmtopo/...
