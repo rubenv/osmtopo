@@ -1,4 +1,4 @@
-.PHONY: all dev binaries container
+.PHONY: all dev binaries container test push
 
 all: container test
 
@@ -25,3 +25,6 @@ container: binaries
 
 test:
 	docker run -ti --rm -v $(GOPATH)/src:/go/src rubenv/osmtopo-dev go test github.com/rubenv/osmtopo/...
+
+push:
+	docker push -f rubenv/osmtopo
