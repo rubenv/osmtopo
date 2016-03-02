@@ -5,7 +5,8 @@ services:
 
 script:
     - mkdir -p $HOME/go/src/github.com/rubenv/
-    - ln -s . $HOME/go/src/github.com/rubenv/osmtopo
+    - mv $HOME/rubenv/osmtopo $HOME/go/src/github.com/rubenv/
     - docker login -e="$DOCKER_EMAIL" -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
     - export GOPATH=$HOME/go/
+    - cd $HOME/go/src/github.com/rubenv/osmtopo
     - make all push
