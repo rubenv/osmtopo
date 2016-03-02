@@ -4,7 +4,6 @@ import (
 	"github.com/gogo/protobuf/proto"
 	"github.com/omniscale/imposm3/element"
 	"github.com/paulsmith/gogeos/geos"
-	"github.com/rubenv/osmtopo"
 	"github.com/rubenv/osmtopo/simplify"
 )
 
@@ -82,20 +81,20 @@ func (r *Relation) GetTag(key string) (string, bool) {
 func (r *Relation) ToGeometry(s *Store) (*geos.Geometry, error) {
 	outerParts := [][]int64{}
 	innerParts := [][]int64{}
-	for _, m := range relation.GetMembers() {
+	for _, m := range r.GetMembers() {
 		if m.GetType() == 1 && m.GetRole() == "outer" {
-			way, err := store.GetWay(m.GetId())
+			way, err := s.GetWay(m.GetId())
 			if err != nil {
-				return err
+				return nil, err
 			}
 
 			outerParts = append(outerParts, way.GetRefs())
 		}
 
 		if m.GetType() == 1 && m.GetRole() == "inner" {
-			way, err := store.GetWay(m.GetId())
+			way, err := s.GetWay(m.GetId())
 			if err != nil {
-				return err
+				return nil, err
 			}
 
 			innerParts = append(innerParts, way.GetRefs())
@@ -105,13 +104,13 @@ func (r *Relation) ToGeometry(s *Store) (*geos.Geometry, error) {
 	outerParts = simplify.Reduce(outerParts)
 	innerParts = simplify.Reduce(innerParts)
 
-	outerPolys, err := toGeom(store, outerParts)
+	outerPolys, err := toGeom(s, outerParts)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	innerPolys, err := toGeom(store, innerParts)
+	innerPolys, err := toGeom(s, innerParts)
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	polygons := make([]*geos.Geometry, 0)
@@ -126,17 +125,17 @@ func (r *Relation) ToGeometry(s *Store) (*geos.Geometry, error) {
 				hole := innerPolys[i]
 				c, err := pshell.Contains(hole)
 				if err != nil {
-					return err
+					return nil, err
 				}
 				if c {
 					s, err := hole.Shell()
 					if err != nil {
-						return err
+						return nil, err
 					}
 
 					c, err := s.Coords()
 					if err != nil {
-						return err
+						return nil, err
 					}
 
 					holes = append(holes, c)
@@ -148,17 +147,17 @@ func (r *Relation) ToGeometry(s *Store) (*geos.Geometry, error) {
 
 		s, err := shell.Shell()
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		scoords, err := s.Coords()
 		if err != nil {
-			return err
+			return nil, err
 		}
 
 		polygon, err := geos.NewPolygon(scoords, holes...)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		polygons = append(polygons, polygon)
 	}
@@ -169,7 +168,7 @@ func (r *Relation) ToGeometry(s *Store) (*geos.Geometry, error) {
 	} else {
 		f, err := geos.NewCollection(geos.MULTIPOLYGON, polygons...)
 		if err != nil {
-			return err
+			return nil, err
 		}
 		feat = f
 	}
@@ -177,7 +176,7 @@ func (r *Relation) ToGeometry(s *Store) (*geos.Geometry, error) {
 	return feat, nil
 }
 
-func toGeom(store *osmtopo.Store, coords [][]int64) ([]*geos.Geometry, error) {
+func toGeom(store *Store, coords [][]int64) ([]*geos.Geometry, error) {
 	linestrings := make([]*geos.Geometry, len(coords))
 	for i, v := range coords {
 		ls, err := expandPoly(store, v)
@@ -190,7 +189,7 @@ func toGeom(store *osmtopo.Store, coords [][]int64) ([]*geos.Geometry, error) {
 	return linestrings, nil
 }
 
-func expandPoly(store *osmtopo.Store, coords []int64) (*geos.Geometry, error) {
+func expandPoly(store *Store, coords []int64) (*geos.Geometry, error) {
 	points := make([]geos.Coord, len(coords))
 	for i, c := range coords {
 		node, err := store.GetNode(c)
