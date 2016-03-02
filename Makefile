@@ -17,7 +17,7 @@ dev: base Dockerfile-dev
 binaries: base dev
 	rm -rf tmp/
 	mkdir -p tmp/
-	docker run -ti --rm -v /go:/go rubenv/osmtopo-dev bash scripts/build-binaries.sh
+	docker run -ti --rm -v $(GOPATH)/src:/go/src rubenv/osmtopo-dev bash scripts/build-binaries.sh
 
 container: binaries
 	cp Dockerfile-binaries tmp/Dockerfile

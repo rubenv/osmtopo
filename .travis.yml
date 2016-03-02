@@ -4,4 +4,8 @@ services:
     - docker
 
 script:
+    - mkdir -p $HOME/go/src/github.com/rubenv/
+    - ln -s . $HOME/go/src/github.com/rubenv/osmtopo/
+    - docker login -e="$DOCKER_EMAIL" -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
+    - export GOPATH=$HOME/go/
     - make all

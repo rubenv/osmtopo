@@ -9,6 +9,8 @@ Vagrant.configure(2) do |config|
     yum -y install docker
     systemctl enable docker
     systemctl start docker
+
+    echo "export GOPATH=/go" > /etc/profile.d/gopath.sh
   SHELL
 
   config.vm.provider :vmware_fusion  do |v|
