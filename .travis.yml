@@ -2,3 +2,6 @@ language: shell
 sudo: required
 services:
     - docker
+
+script:
+    - make all
