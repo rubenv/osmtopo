@@ -5,14 +5,14 @@ import (
 	"strings"
 
 	"github.com/gogo/protobuf/proto"
-	"github.com/jmhodges/levigo"
+	"github.com/tecbot/gorocksdb"
 )
 
 type Indexer struct {
 	store *Store
 }
 
-func (i *Indexer) newRelation(rel *Relation, wb *levigo.WriteBatch) {
+func (i *Indexer) newRelation(rel *Relation, wb *gorocksdb.WriteBatch) {
 	if v, ok := rel.GetTag("admin_level"); ok {
 		i.indexTag(rel.GetId(), "admin_level", v, wb)
 	}
@@ -22,7 +22,7 @@ func (i *Indexer) newRelation(rel *Relation, wb *levigo.WriteBatch) {
 	}
 }
 
-func (i *Indexer) removeRelation(rel *Relation, wb *levigo.WriteBatch) {
+func (i *Indexer) removeRelation(rel *Relation, wb *gorocksdb.WriteBatch) {
 	if v, ok := rel.GetTag("admin_level"); ok {
 		i.deindexTag(rel.GetId(), "admin_level", v, wb)
 	}
@@ -32,32 +32,31 @@ func (i *Indexer) removeRelation(rel *Relation, wb *levigo.WriteBatch) {
 	}
 }
 
-func (i *Indexer) indexTag(id int64, tag, value string, wb *levigo.WriteBatch) {
+func (i *Indexer) indexTag(id int64, tag, value string, wb *gorocksdb.WriteBatch) {
 	wb.Put([]byte(fmt.Sprintf("tags/%s/%s/%d", tag, value, id)), []byte("1"))
 }
 
-func (i *Indexer) deindexTag(id int64, tag, value string, wb *levigo.WriteBatch) {
+func (i *Indexer) deindexTag(id int64, tag, value string, wb *gorocksdb.WriteBatch) {
 	wb.Delete([]byte(fmt.Sprintf("tags/%s/%s/%d", tag, value, id)))
 }
 
 func (i *Indexer) reindex() error {
-	wb := levigo.NewWriteBatch()
-	defer wb.Close()
+	wb := gorocksdb.NewWriteBatch()
+	defer wb.Destroy()
 
-	ro := levigo.NewReadOptions()
-	defer ro.Close()
+	ro := gorocksdb.NewDefaultReadOptions()
 	ro.SetFillCache(false)
 
 	it := i.store.db.NewIterator(ro)
 	defer it.Close()
 
 	for it.Seek([]byte("relation")); it.Valid(); it.Next() {
-		if !strings.HasPrefix(string(it.Key()), "relation") {
+		if !strings.HasPrefix(string(it.Key().Data()), "relation") {
 			break
 		}
 
 		rel := &Relation{}
-		err := proto.Unmarshal(it.Value(), rel)
+		err := proto.Unmarshal(it.Value().Data(), rel)
 		if err != nil {
 			return err
 		}
@@ -65,7 +64,7 @@ func (i *Indexer) reindex() error {
 		i.newRelation(rel, wb)
 	}
 
-	if err := it.GetError(); err != nil {
+	if err := it.Err(); err != nil {
 		return err
 	}
 

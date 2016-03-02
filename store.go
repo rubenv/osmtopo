@@ -7,17 +7,17 @@ import (
 	"os"
 
 	"github.com/gogo/protobuf/proto"
-	"github.com/jmhodges/levigo"
 	"github.com/omniscale/imposm3/parser/pbf"
+	"github.com/tecbot/gorocksdb"
 )
 
 type Store struct {
 	path    string
-	db      *levigo.DB
+	db      *gorocksdb.DB
 	indexer *Indexer
 
-	wo *levigo.WriteOptions
-	ro *levigo.ReadOptions
+	wo *gorocksdb.WriteOptions
+	ro *gorocksdb.ReadOptions
 }
 
 func NewStore(path string) (*Store, error) {
@@ -34,18 +34,18 @@ func NewStore(path string) (*Store, error) {
 		store: store,
 	}
 
-	opts := levigo.NewOptions()
-	opts.SetCache(levigo.NewLRUCache(3 << 30))
+	opts := gorocksdb.NewDefaultOptions()
+	//opts.SetBlockCache(gorocksdb.NewLRUCache(3 << 30))
 	opts.SetCreateIfMissing(true)
-	opts.SetFilterPolicy(levigo.NewBloomFilter(10))
-	db, err := levigo.Open(path+"/ldb", opts)
+	//opts.SetFilterPolicy(gorocksdb.NewBloomFilter(10))
+	db, err := gorocksdb.OpenDb(opts, path+"/ldb")
 	if err != nil {
 		return nil, err
 	}
 	store.db = db
 
-	store.wo = levigo.NewWriteOptions()
-	store.ro = levigo.NewReadOptions()
+	//store.wo = gorocksdb.NewWriteOptions()
+	//store.ro = gorocksdb.NewReadOptions()
 	//store.ro.SetFillCache(false)
 
 	return store, nil
@@ -82,8 +82,8 @@ func (s *Store) Reindex() error {
 }
 
 func (s *Store) addNewNodes(arr []*Node) error {
-	wb := levigo.NewWriteBatch()
-	defer wb.Close()
+	wb := gorocksdb.NewWriteBatch()
+	defer wb.Destroy()
 	for _, n := range arr {
 		data, err := proto.Marshal(n)
 		if err != nil {
@@ -95,15 +95,15 @@ func (s *Store) addNewNodes(arr []*Node) error {
 }
 
 func (s *Store) removeNode(n *Node) error {
-	wb := levigo.NewWriteBatch()
-	defer wb.Close()
+	wb := gorocksdb.NewWriteBatch()
+	defer wb.Destroy()
 	wb.Delete([]byte(fmt.Sprintf("node/%d", n.GetId())))
 	return s.db.Write(s.wo, wb)
 }
 
 func (s *Store) addNewWays(arr []*Way) error {
-	wb := levigo.NewWriteBatch()
-	defer wb.Close()
+	wb := gorocksdb.NewWriteBatch()
+	defer wb.Destroy()
 	for _, n := range arr {
 		data, err := proto.Marshal(n)
 		if err != nil {
@@ -115,15 +115,15 @@ func (s *Store) addNewWays(arr []*Way) error {
 }
 
 func (s *Store) removeWay(n *Way) error {
-	wb := levigo.NewWriteBatch()
-	defer wb.Close()
+	wb := gorocksdb.NewWriteBatch()
+	defer wb.Destroy()
 	wb.Delete([]byte(fmt.Sprintf("way/%d", n.GetId())))
 	return s.db.Write(s.wo, wb)
 }
 
 func (s *Store) addNewRelations(arr []*Relation) error {
-	wb := levigo.NewWriteBatch()
-	defer wb.Close()
+	wb := gorocksdb.NewWriteBatch()
+	defer wb.Destroy()
 	for _, n := range arr {
 		data, err := proto.Marshal(n)
 		if err != nil {
@@ -137,8 +137,8 @@ func (s *Store) addNewRelations(arr []*Relation) error {
 }
 
 func (s *Store) removeRelation(n *Relation) error {
-	wb := levigo.NewWriteBatch()
-	defer wb.Close()
+	wb := gorocksdb.NewWriteBatch()
+	defer wb.Destroy()
 	s.indexer.removeRelation(n, wb)
 	wb.Delete([]byte(fmt.Sprintf("relation/%d", n.GetId())))
 	return s.db.Write(s.wo, wb)
@@ -150,12 +150,12 @@ func (s *Store) GetNode(id int64) (*Node, error) {
 		return nil, err
 	}
 
-	if len(n) == 0 {
+	if n.Size() == 0 {
 		return nil, nil
 	}
 
 	node := &Node{}
-	err = proto.Unmarshal(n, node)
+	err = proto.Unmarshal(n.Data(), node)
 	if err != nil {
 		return nil, err
 	}
@@ -169,12 +169,12 @@ func (s *Store) GetWay(id int64) (*Way, error) {
 		return nil, err
 	}
 
-	if len(n) == 0 {
+	if n.Size() == 0 {
 		return nil, nil
 	}
 
 	way := &Way{}
-	err = proto.Unmarshal(n, way)
+	err = proto.Unmarshal(n.Data(), way)
 	if err != nil {
 		return nil, err
 	}
@@ -188,12 +188,12 @@ func (s *Store) GetRelation(id int64) (*Relation, error) {
 		return nil, err
 	}
 
-	if len(n) == 0 {
+	if n.Size() == 0 {
 		return nil, nil
 	}
 
 	rel := &Relation{}
-	err = proto.Unmarshal(n, rel)
+	err = proto.Unmarshal(n.Data(), rel)
 	if err != nil {
 		return nil, err
 	}

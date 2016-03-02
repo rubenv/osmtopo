@@ -23,7 +23,7 @@ container: binaries
 	cp Dockerfile-binaries tmp/Dockerfile
 	docker build -t rubenv/osmtopo tmp/
 
-test:
+test: binaries
 	docker run -ti --rm -v $(GOPATH)/src:/go/src rubenv/osmtopo-dev go test github.com/rubenv/osmtopo/...
 
 push:
