@@ -1,6 +1,6 @@
 FROM rubenv/osmtopo-base
 
-RUN dnf -y install golang && \
+RUN dnf -y install golang git && \
     dnf clean all
 
 ENV GOPATH /go
