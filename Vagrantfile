@@ -10,4 +10,9 @@ Vagrant.configure(2) do |config|
     systemctl enable docker
     systemctl start docker
   SHELL
+
+  config.vm.provider :vmware_fusion  do |v|
+    v.vmx["memsize"] = "8192"
+    v.vmx["numvcpus"] = "8"
+  end
 end
