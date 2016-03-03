@@ -73,8 +73,7 @@ func (i *Import) updateProgress() {
 
 func (i *Import) startParser() {
 	parser := pbf.NewParser(i.File, i.nodes, i.nodes, i.ways, i.relations)
-	parser.Start()
-	parser.Close()
+	parser.Parse()
 
 	close(i.nodes)
 	close(i.ways)
