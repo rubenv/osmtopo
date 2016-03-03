@@ -16,6 +16,7 @@ type Import struct {
 	started time.Time
 	running bool
 	wg      sync.WaitGroup
+	pwg     sync.WaitGroup
 	err     error
 
 	coords    chan []element.Node
@@ -35,6 +36,7 @@ func (i *Import) Run() error {
 	i.relations = make(chan []element.Relation, 1000)
 
 	i.wg.Add(4)
+	i.pwg.Add(1)
 	i.running = true
 	i.started = time.Now()
 
@@ -47,11 +49,14 @@ func (i *Import) Run() error {
 
 	i.wg.Wait()
 	i.running = false
+	i.pwg.Wait()
 
 	return i.err
 }
 
 func (i *Import) updateProgress() {
+	defer i.pwg.Done()
+
 	prevNodeCount := int64(0)
 	prevWayCount := int64(0)
 	prevRelationCount := int64(0)
