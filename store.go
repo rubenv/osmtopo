@@ -35,9 +35,11 @@ func NewStore(path string) (*Store, error) {
 	}
 
 	opts := gorocksdb.NewDefaultOptions()
-	//opts.SetBlockCache(gorocksdb.NewLRUCache(3 << 30))
+	bb := gorocksdb.NewDefaultBlockBasedTableOptions()
+	bb.SetBlockCache(gorocksdb.NewLRUCache(3 << 30))
+	bb.SetFilterPolicy(gorocksdb.NewBloomFilter(10))
 	opts.SetCreateIfMissing(true)
-	//opts.SetFilterPolicy(gorocksdb.NewBloomFilter(10))
+	opts.SetBlockBasedTableFactory(bb)
 	db, err := gorocksdb.OpenDb(opts, path+"/ldb")
 	if err != nil {
 		return nil, err
