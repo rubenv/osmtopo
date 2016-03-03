@@ -18,6 +18,7 @@ type Import struct {
 	wg      sync.WaitGroup
 	err     error
 
+	coords    chan []element.Node
 	nodes     chan []element.Node
 	ways      chan []element.Way
 	relations chan []element.Relation
@@ -28,14 +29,16 @@ type Import struct {
 }
 
 func (i *Import) Run() error {
+	i.coords = make(chan []element.Node, 1000)
 	i.nodes = make(chan []element.Node, 1000)
 	i.ways = make(chan []element.Way, 1000)
 	i.relations = make(chan []element.Relation, 1000)
 
-	i.wg.Add(3)
+	i.wg.Add(4)
 	i.running = true
 	i.started = time.Now()
 
+	go i.importCoords()
 	go i.importNodes()
 	go i.importWays()
 	go i.importRelations()
@@ -72,12 +75,31 @@ func (i *Import) updateProgress() {
 }
 
 func (i *Import) startParser() {
-	parser := pbf.NewParser(i.File, i.nodes, i.nodes, i.ways, i.relations)
+	parser := pbf.NewParser(i.File, i.coords, i.nodes, i.ways, i.relations)
 	parser.Parse()
+}
 
-	close(i.nodes)
-	close(i.ways)
-	close(i.relations)
+func (i *Import) importCoords() {
+	defer i.wg.Done()
+	for {
+		arr, ok := <-i.coords
+		if !ok {
+			return
+		}
+		if i.err != nil {
+			continue
+		}
+
+		nodes := []*Node{}
+		for _, n := range arr {
+			nodes = append(nodes, NodeFromEl(n))
+		}
+		err := i.Store.addNewNodes(nodes)
+		if err != nil {
+			i.err = err
+		}
+		i.nodeCount += int64(len(arr))
+	}
 }
 
 func (i *Import) importNodes() {
