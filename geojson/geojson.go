@@ -10,7 +10,7 @@ type Feature struct {
 	Features   []*Feature        `json:"features,omitempty"`
 	Geometry   *Geometry         `json:"geometry,omitempty"`
 	Id         *int64            `json:"id,omitempty"`
-	Properties map[string]string `json:"properties,omitempty"`
+	Properties map[string]string `json:"properties"`
 	Type       string            `json:"type"`
 }
 

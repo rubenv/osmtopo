@@ -1,3 +1,5 @@
 FROM rubenv/osmtopo-base
 
-ADD * /usr/local/bin/
+ADD osmtopo /usr/local/bin/
+
+CMD osmtopo

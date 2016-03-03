@@ -67,7 +67,9 @@ func (s *Store) Import(file string) error {
 		Store: s,
 		File:  f,
 	}
-	return i.Run()
+	err = i.Run()
+	fmt.Println()
+	return err
 }
 
 func (s *Store) ApplyChange(file string) error {
