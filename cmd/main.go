@@ -5,7 +5,7 @@ import (
 	"os"
 
 	"github.com/jessevdk/go-flags"
-	"github.com/rubenv/osmtopo"
+	"github.com/rubenv/osmtopo/osmtopo"
 )
 
 type GlobalOptions struct {
