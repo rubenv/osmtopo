@@ -4,7 +4,10 @@ package osmtopo
 
 import (
 	"fmt"
+	"io/ioutil"
 	"os"
+
+	"gopkg.in/yaml.v1"
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/omniscale/imposm3/parser/pbf"
@@ -201,4 +204,25 @@ func (s *Store) GetRelation(id int64) (*Relation, error) {
 	}
 
 	return rel, nil
+}
+
+func (s *Store) Extract(configPath, outPath string) error {
+	data, err := ioutil.ReadFile(configPath)
+	if err != nil {
+		return err
+	}
+
+	config := &ExtractConfig{}
+	err = yaml.Unmarshal(data, config)
+	if err != nil {
+		return err
+	}
+
+	extractor := &Extractor{
+		store:   s,
+		config:  config,
+		outPath: outPath,
+	}
+
+	return extractor.Run()
 }
