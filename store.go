@@ -44,9 +44,9 @@ func NewStore(path string) (*Store, error) {
 	}
 	store.db = db
 
-	//store.wo = gorocksdb.NewWriteOptions()
-	//store.ro = gorocksdb.NewReadOptions()
-	//store.ro.SetFillCache(false)
+	store.wo = gorocksdb.NewDefaultWriteOptions()
+	store.ro = gorocksdb.NewDefaultReadOptions()
+	store.ro.SetFillCache(false)
 
 	return store, nil
 }
