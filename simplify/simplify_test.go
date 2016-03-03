@@ -26,6 +26,22 @@ func TestMergesLines(t *testing.T) {
 	}
 }
 
+func TestRemoveEmpty(t *testing.T) {
+	input := [][]int64{
+		[]int64{},
+		[]int64{1, 2},
+		[]int64{},
+		[]int64{2, 3},
+		[]int64{},
+	}
+	expected := [][]int64{
+		[]int64{1, 2, 3},
+	}
+	if !reflect.DeepEqual(Reduce(input), expected) {
+		t.Fatal("Failed")
+	}
+}
+
 func TestPreserveBodies(t *testing.T) {
 	input := [][]int64{
 		[]int64{1, 2, 3},
