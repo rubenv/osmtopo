@@ -27,4 +27,4 @@ test: binaries
 	docker run -ti --rm -v $(GOPATH)/src:/go/src rubenv/osmtopo-dev go test github.com/rubenv/osmtopo/...
 
 push:
-	docker push -f rubenv/osmtopo
+	docker push rubenv/osmtopo
