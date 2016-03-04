@@ -79,15 +79,24 @@ func (l *Land) Import(zipfile string) error {
 		if err != nil {
 			return err
 		}
-		if poly != nil {
+		if feature != nil {
 			features = append(features, feature)
 		}
 	}
 
-	err = l.store.addNewFeatures(features)
+	log.Println("Removing old features")
+	err = l.store.removeFeatures("land")
 	if err != nil {
 		return err
 	}
+
+	log.Printf("Storing %d features", len(features))
+	err = l.store.addNewFeatures("land", features)
+	if err != nil {
+		return err
+	}
+
+	log.Println("Done")
 
 	return nil
 }

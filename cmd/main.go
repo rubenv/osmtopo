@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 
@@ -25,6 +26,10 @@ func Run() error {
 }
 
 func (g *GlobalOptions) OpenStore() (*osmtopo.Store, error) {
+	if g.DataStore == "" {
+		return nil, errors.New("No datastore specified")
+	}
+
 	store, err := osmtopo.NewStore(g.DataStore)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to open store: %s\n", err.Error())

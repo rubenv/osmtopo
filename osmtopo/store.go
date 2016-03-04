@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strings"
 
 	"gopkg.in/yaml.v1"
 
@@ -149,7 +150,7 @@ func (s *Store) removeRelation(n *Relation) error {
 	return s.db.Write(s.wo, wb)
 }
 
-func (s *Store) addNewFeatures(arr []*Feature) error {
+func (s *Store) addNewFeatures(prefix string, arr []*Feature) error {
 	wb := gorocksdb.NewWriteBatch()
 	defer wb.Destroy()
 	for _, n := range arr {
@@ -157,9 +158,41 @@ func (s *Store) addNewFeatures(arr []*Feature) error {
 		if err != nil {
 			return err
 		}
-		wb.Put([]byte(fmt.Sprintf("land/%d", n.GetId())), data)
+		key := fmt.Sprintf("feature/%s/%d", prefix, n.GetId())
+		wb.Put([]byte(key), data)
 	}
 	return s.db.Write(s.wo, wb)
+}
+
+func (s *Store) removeFeatures(prefix string) error {
+	ro := gorocksdb.NewDefaultReadOptions()
+	ro.SetFillCache(false)
+
+	it := s.db.NewIterator(ro)
+	defer it.Close()
+
+	wb := gorocksdb.NewWriteBatch()
+	defer wb.Destroy()
+
+	found := false
+	keyPrefix := fmt.Sprintf("feature/%s/", prefix)
+	for it = it; it.Valid(); it.Next() {
+		key := it.Key()
+		k := key.Data()
+		if !strings.HasPrefix(string(k), keyPrefix) {
+			key.Free()
+			break
+		}
+
+		key.Free()
+		wb.Delete(k)
+		found = true
+	}
+
+	if found {
+		return s.db.Write(s.wo, wb)
+	}
+	return nil
 }
 
 func (s *Store) GetNode(id int64) (*Node, error) {
@@ -167,6 +200,7 @@ func (s *Store) GetNode(id int64) (*Node, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer n.Free()
 
 	if n.Size() == 0 {
 		return nil, nil
@@ -186,6 +220,7 @@ func (s *Store) GetWay(id int64) (*Way, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer n.Free()
 
 	if n.Size() == 0 {
 		return nil, nil
@@ -205,6 +240,7 @@ func (s *Store) GetRelation(id int64) (*Relation, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer n.Free()
 
 	if n.Size() == 0 {
 		return nil, nil
