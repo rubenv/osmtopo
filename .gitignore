@@ -1,3 +1,4 @@
 .*.swp
 /tmp
 .vagrant
+.DS_Store

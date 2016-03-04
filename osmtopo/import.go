@@ -35,12 +35,11 @@ func (i *Import) Run() error {
 	i.ways = make(chan []element.Way, 1000)
 	i.relations = make(chan []element.Relation, 1000)
 
-	i.wg.Add(4)
+	i.wg.Add(3)
 	i.pwg.Add(1)
 	i.running = true
 	i.started = time.Now()
 
-	go i.importCoords()
 	go i.importNodes()
 	go i.importWays()
 	go i.importRelations()
@@ -60,21 +59,30 @@ func (i *Import) updateProgress() {
 	prevNodeCount := int64(0)
 	prevWayCount := int64(0)
 	prevRelationCount := int64(0)
-	tick := time.Tick(1 * time.Second)
+	every := int64(10)
+	tick := time.Tick(time.Duration(every) * time.Second)
 
-	for i.running {
+	update := func() {
 		executing := time.Now().Sub(i.started)
-		newNodes := i.nodeCount - prevNodeCount
-		newWays := i.wayCount - prevWayCount
-		newRelations := i.relationCount - prevRelationCount
+		newNodes := (i.nodeCount - prevNodeCount) / every
+		newWays := (i.wayCount - prevWayCount) / every
+		newRelations := (i.relationCount - prevRelationCount) / every
 
-		fmt.Printf("\r[N: %12d (%7d/s)] [W: %12d (%7d/s)] [R: %12d (%7d/s)] %s", i.nodeCount, newNodes, i.wayCount, newWays, i.relationCount, newRelations, executing)
+		elapsed := time.Duration(executing.Seconds()) * time.Second
+
+		fmt.Printf("\r[N: %12d (%7d/s)] [W: %12d (%7d/s)] [R: %12d (%7d/s)] %s", i.nodeCount, newNodes, i.wayCount, newWays, i.relationCount, newRelations, elapsed)
 
 		prevNodeCount += newNodes
 		prevWayCount += newWays
 		prevRelationCount += newRelations
+	}
+
+	for i.running {
+		update()
 		<-tick
 	}
+
+	update()
 
 	fmt.Println()
 }
@@ -84,94 +92,130 @@ func (i *Import) startParser() {
 	parser.Parse()
 }
 
-func (i *Import) importCoords() {
-	defer i.wg.Done()
-	for {
-		arr, ok := <-i.coords
-		if !ok {
-			return
-		}
-		if i.err != nil {
-			continue
-		}
-
-		nodes := []*Node{}
-		for _, n := range arr {
-			nodes = append(nodes, NodeFromEl(n))
-		}
-		err := i.Store.addNewNodes(nodes)
-		if err != nil {
-			i.err = err
-		}
-		i.nodeCount += int64(len(arr))
-	}
-}
-
 func (i *Import) importNodes() {
 	defer i.wg.Done()
-	for {
-		arr, ok := <-i.nodes
-		if !ok {
-			return
+	nodeChan := i.nodes
+	coordChan := i.coords
+	el := []element.Node{}
+
+	nodes := []*Node{}
+	batchSize := 2500000
+
+	for nodeChan != nil || coordChan != nil {
+		select {
+		case arr, ok := <-coordChan:
+			if !ok {
+				coordChan = nil
+				continue
+			}
+			el = arr
+		case arr, ok := <-nodeChan:
+			if !ok {
+				nodeChan = nil
+				continue
+			}
+			el = arr
 		}
+
 		if i.err != nil {
 			continue
 		}
 
-		nodes := []*Node{}
-		for _, n := range arr {
+		for _, n := range el {
 			nodes = append(nodes, NodeFromEl(n))
 		}
+
+		if len(nodes) > batchSize {
+			err := i.Store.addNewNodes(nodes)
+			if err != nil {
+				i.err = err
+			}
+			i.nodeCount += int64(len(nodes))
+			nodes = []*Node{}
+		}
+	}
+
+	if len(nodes) > 0 {
 		err := i.Store.addNewNodes(nodes)
 		if err != nil {
 			i.err = err
 		}
-		i.nodeCount += int64(len(arr))
+		i.nodeCount += int64(len(nodes))
 	}
 }
 
 func (i *Import) importWays() {
 	defer i.wg.Done()
+
+	ways := []*Way{}
+	batchSize := 10000000
+
 	for {
 		arr, ok := <-i.ways
 		if !ok {
-			return
+			break
 		}
 		if i.err != nil {
 			continue
 		}
 
-		ways := []*Way{}
 		for _, n := range arr {
 			ways = append(ways, WayFromEl(n))
 		}
+
+		if len(ways) > batchSize {
+			err := i.Store.addNewWays(ways)
+			if err != nil {
+				i.err = err
+			}
+			i.wayCount += int64(len(ways))
+			ways = []*Way{}
+		}
+	}
+
+	if len(ways) > 0 {
 		err := i.Store.addNewWays(ways)
 		if err != nil {
 			i.err = err
 		}
-		i.wayCount += int64(len(arr))
+		i.wayCount += int64(len(ways))
 	}
 }
 
 func (i *Import) importRelations() {
 	defer i.wg.Done()
+
+	rels := []*Relation{}
+	batchSize := 10000
+
 	for {
 		arr, ok := <-i.relations
 		if !ok {
-			return
+			break
 		}
 		if i.err != nil {
 			continue
 		}
 
-		rels := []*Relation{}
 		for _, n := range arr {
 			rels = append(rels, RelationFromEl(n))
 		}
+
+		if len(rels) > batchSize {
+			err := i.Store.addNewRelations(rels)
+			if err != nil {
+				i.err = err
+			}
+			i.relationCount += int64(len(rels))
+			rels = []*Relation{}
+		}
+	}
+
+	if len(rels) > 0 {
 		err := i.Store.addNewRelations(rels)
 		if err != nil {
 			i.err = err
 		}
-		i.relationCount += int64(len(arr))
+		i.relationCount += int64(len(rels))
 	}
 }

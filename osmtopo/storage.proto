@@ -33,3 +33,8 @@ message Relation {
 
     repeated MemberEntry members = 8;
 }
+
+message Feature {
+    required sint64 id = 1;
+    required bytes geojson = 2;
+}

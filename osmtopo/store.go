@@ -149,6 +149,19 @@ func (s *Store) removeRelation(n *Relation) error {
 	return s.db.Write(s.wo, wb)
 }
 
+func (s *Store) addNewFeatures(arr []*Feature) error {
+	wb := gorocksdb.NewWriteBatch()
+	defer wb.Destroy()
+	for _, n := range arr {
+		data, err := proto.Marshal(n)
+		if err != nil {
+			return err
+		}
+		wb.Put([]byte(fmt.Sprintf("land/%d", n.GetId())), data)
+	}
+	return s.db.Write(s.wo, wb)
+}
+
 func (s *Store) GetNode(id int64) (*Node, error) {
 	n, err := s.db.Get(s.ro, []byte(fmt.Sprintf("node/%d", id)))
 	if err != nil {
@@ -225,4 +238,8 @@ func (s *Store) Extract(configPath, outPath string) error {
 	}
 
 	return extractor.Run()
+}
+
+func (s *Store) Land() *Land {
+	return &Land{store: s}
 }

@@ -14,6 +14,7 @@ It has these top-level messages:
 	Way
 	MemberEntry
 	Relation
+	Feature
 */
 package osmtopo
 
@@ -180,6 +181,30 @@ func (m *Relation) GetTags() []*TagEntry {
 func (m *Relation) GetMembers() []*MemberEntry {
 	if m != nil {
 		return m.Members
+	}
+	return nil
+}
+
+type Feature struct {
+	Id               *int64 `protobuf:"zigzag64,1,req,name=id" json:"id,omitempty"`
+	Geojson          []byte `protobuf:"bytes,2,req,name=geojson" json:"geojson,omitempty"`
+	XXX_unrecognized []byte `json:"-"`
+}
+
+func (m *Feature) Reset()         { *m = Feature{} }
+func (m *Feature) String() string { return proto.CompactTextString(m) }
+func (*Feature) ProtoMessage()    {}
+
+func (m *Feature) GetId() int64 {
+	if m != nil && m.Id != nil {
+		return *m.Id
+	}
+	return 0
+}
+
+func (m *Feature) GetGeojson() []byte {
+	if m != nil {
+		return m.Geojson
 	}
 	return nil
 }
