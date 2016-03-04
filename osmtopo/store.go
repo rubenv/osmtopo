@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strconv"
 	"strings"
 
 	"gopkg.in/yaml.v1"
@@ -165,34 +166,23 @@ func (s *Store) addNewFeatures(prefix string, arr []*Feature) error {
 }
 
 func (s *Store) removeFeatures(prefix string) error {
-	ro := gorocksdb.NewDefaultReadOptions()
-	ro.SetFillCache(false)
-
-	it := s.db.NewIterator(ro)
-	defer it.Close()
+	keys, err := s.GetFeatures(prefix)
+	if err != nil {
+		return err
+	}
+	if len(keys) == 0 {
+		return nil
+	}
 
 	wb := gorocksdb.NewWriteBatch()
 	defer wb.Destroy()
 
-	found := false
-	keyPrefix := fmt.Sprintf("feature/%s/", prefix)
-	for it = it; it.Valid(); it.Next() {
-		key := it.Key()
-		k := key.Data()
-		if !strings.HasPrefix(string(k), keyPrefix) {
-			key.Free()
-			break
-		}
-
-		key.Free()
-		wb.Delete(k)
-		found = true
+	for _, k := range keys {
+		key := fmt.Sprintf("feature/%s/%d", prefix, k)
+		wb.Delete([]byte(key))
 	}
 
-	if found {
-		return s.db.Write(s.wo, wb)
-	}
-	return nil
+	return s.db.Write(s.wo, wb)
 }
 
 func (s *Store) GetNode(id int64) (*Node, error) {
@@ -253,6 +243,56 @@ func (s *Store) GetRelation(id int64) (*Relation, error) {
 	}
 
 	return rel, nil
+}
+
+func (s *Store) GetFeature(prefix string, id int64) (*Feature, error) {
+	n, err := s.db.Get(s.ro, []byte(fmt.Sprintf("feature/%s/%d", prefix, id)))
+	if err != nil {
+		return nil, err
+	}
+	defer n.Free()
+
+	if n.Size() == 0 {
+		return nil, nil
+	}
+
+	rel := &Feature{}
+	err = proto.Unmarshal(n.Data(), rel)
+	if err != nil {
+		return nil, err
+	}
+
+	return rel, nil
+}
+
+func (s *Store) GetFeatures(prefix string) ([]int64, error) {
+	ro := gorocksdb.NewDefaultReadOptions()
+	ro.SetFillCache(false)
+
+	it := s.db.NewIterator(ro)
+	defer it.Close()
+
+	result := make([]int64, 0)
+	keyPrefix := fmt.Sprintf("feature/%s/", prefix)
+	it.Seek([]byte(keyPrefix))
+	for it = it; it.Valid(); it.Next() {
+		key := it.Key()
+		k := key.Data()
+		if !strings.HasPrefix(string(k), keyPrefix) {
+			key.Free()
+			break
+		}
+
+		key.Free()
+
+		id, err := strconv.ParseInt(string(k[len(keyPrefix):]), 10, 64)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, id)
+	}
+
+	return result, nil
 }
 
 func (s *Store) Extract(configPath, outPath string) error {

@@ -220,3 +220,47 @@ func shpToGeom(coords [][]shp.Point) ([]*geos.Geometry, error) {
 
 	return linestrings, nil
 }
+
+func (l *Land) Export(filename string) error {
+	keys, err := l.store.GetFeatures("land")
+	if err != nil {
+		return err
+	}
+
+	if len(keys) == 0 {
+		return errors.New("No land found, did you forget to import first?")
+	}
+
+	result := &geojson.Feature{
+		Type: "FeatureCollection",
+	}
+
+	for _, key := range keys {
+		f, err := l.store.GetFeature("land", key)
+		if err != nil {
+			return err
+		}
+
+		feature := &geojson.Feature{}
+		err = json.Unmarshal(f.GetGeojson(), feature)
+		if err != nil {
+			return err
+		}
+
+		if feature.Type == "FeatureCollection" {
+			for _, f := range feature.Features {
+				result.Features = append(result.Features, f)
+			}
+		} else {
+			result.Features = append(result.Features, feature)
+		}
+	}
+
+	out, err := os.Create(filename)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	return json.NewEncoder(out).Encode(result)
+}

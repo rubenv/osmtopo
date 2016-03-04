@@ -63,6 +63,8 @@ func (cmd CmdLand) Execute(args []string) error {
 		return err
 	case "import":
 		return land.Import(filename)
+	case "export":
+		return land.Export(filename)
 	}
 
 	return nil
