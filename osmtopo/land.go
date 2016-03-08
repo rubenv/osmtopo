@@ -17,8 +17,6 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/jonas-p/go-shp"
-	"github.com/paulmach/go.geo"
-	"github.com/paulmach/go.geo/reducers"
 	"github.com/paulsmith/gogeos/geos"
 	"github.com/rubenv/osmtopo/geojson"
 )
@@ -144,22 +142,24 @@ func (l *Land) processPolygon(id int64, poly *shp.Polygon) (*Feature, error) {
 			continue
 		}
 
-		// Simplify
-		path := geo.NewPathPreallocate(len(points), len(points))
-		for i, p := range points {
-			path.SetAt(i, &geo.Point{p.X, p.Y})
-		}
-		simplified := reducers.VisvalingamThreshold(path, 1e-6)
+		/*
+			// Simplify
+			path := geo.NewPathPreallocate(len(points), len(points))
+			for i, p := range points {
+				path.SetAt(i, &geo.Point{p.X, p.Y})
+			}
+			simplified := reducers.VisvalingamThreshold(path, 1e-6)
 
-		points = []shp.Point{}
-		length := simplified.Length()
-		for j := 0; j < length; j++ {
-			point := simplified.GetAt(j)
-			points = append(points, shp.Point{
-				X: point[0],
-				Y: point[1],
-			})
-		}
+			points = []shp.Point{}
+			length := simplified.Length()
+			for j := 0; j < length; j++ {
+				point := simplified.GetAt(j)
+				points = append(points, shp.Point{
+					X: point[0],
+					Y: point[1],
+				})
+			}
+		*/
 
 		// Drop tiny geometries
 		area := ringArea(points)
