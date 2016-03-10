@@ -29,7 +29,7 @@ container: binaries
 	docker run -ti --rm rubenv/osmtopo osmtopo --help
 
 test: binaries
-	docker run -ti --rm -v $(GOPATH)/src:/go/src rubenv/osmtopo-dev go test -bench=. -benchmem -cover github.com/rubenv/osmtopo/...
+	docker run -ti --rm -v $(GOPATH)/src:/go/src rubenv/osmtopo-dev go test -tags=embed -bench=. -benchmem -cover github.com/rubenv/osmtopo/...
 
 push:
 	docker push rubenv/osmtopo-base
