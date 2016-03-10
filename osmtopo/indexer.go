@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/gogo/protobuf/proto"
-	"github.com/tecbot/gorocksdb"
+	"github.com/rubenv/gorocksdb"
 )
 
 type Indexer struct {

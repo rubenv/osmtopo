@@ -13,7 +13,7 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/omniscale/imposm3/parser/pbf"
-	"github.com/tecbot/gorocksdb"
+	"github.com/rubenv/gorocksdb"
 )
 
 type Store struct {
