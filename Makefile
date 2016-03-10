@@ -1,4 +1,4 @@
-.PHONY: all dev binaries container test push
+.PHONY: all base dev binaries container test push
 
 all: container test
 
