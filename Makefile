@@ -20,7 +20,7 @@ dev: base Dockerfile-dev
 binaries: base dev
 	rm -rf tmp/
 	mkdir -p tmp/
-	docker run -ti --rm -v $(GOPATH)/src:/go/src rubenv/osmtopo-dev go get -tags=embed -v -t ./...
+	docker run -ti --rm -v $(GOPATH)/src:/go/src rubenv/osmtopo-dev go get -tags=embed -v -t -d ./...
 	docker run -ti --rm -v $(GOPATH)/src:/go/src rubenv/osmtopo-dev go build -tags=embed -v -o tmp/osmtopo ./bin/osmtopo
 
 container: binaries
