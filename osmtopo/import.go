@@ -64,13 +64,13 @@ func (i *Import) updateProgress() {
 
 	update := func() {
 		executing := time.Now().Sub(i.started)
-		newNodes := (i.nodeCount - prevNodeCount) / every
-		newWays := (i.wayCount - prevWayCount) / every
-		newRelations := (i.relationCount - prevRelationCount) / every
+		newNodes := (i.nodeCount - prevNodeCount)
+		newWays := (i.wayCount - prevWayCount)
+		newRelations := (i.relationCount - prevRelationCount)
 
 		elapsed := time.Duration(executing.Seconds()) * time.Second
 
-		fmt.Printf("\r[N: %12d (%7d/s)] [W: %12d (%7d/s)] [R: %12d (%7d/s)] %s", i.nodeCount, newNodes, i.wayCount, newWays, i.relationCount, newRelations, elapsed)
+		fmt.Printf("\r[N: %12d (%7d/s)] [W: %12d (%7d/s)] [R: %12d (%7d/s)] %s", i.nodeCount, newNodes/every, i.wayCount, newWays/every, i.relationCount, newRelations/every, elapsed)
 
 		prevNodeCount += newNodes
 		prevWayCount += newWays
