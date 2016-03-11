@@ -67,7 +67,7 @@ func (e *Extractor) Run() error {
 		return errors.New("No land found, did you forget to import first?")
 	}
 
-	clipGeos := make([]*ClipGeometry, 0, len(keys))
+	clipGeos := make([]*geos.Geometry, 0, len(keys))
 	for _, key := range keys {
 		f, err := e.store.GetFeature("land", key)
 		if err != nil {
@@ -85,10 +85,12 @@ func (e *Extractor) Run() error {
 			return err
 		}
 
-		clipGeos = append(clipGeos, &ClipGeometry{
-			Geometry: geom,
-			Prepared: geom.Prepare(),
-		})
+		clipGeos = append(clipGeos, geom)
+	}
+
+	clipGeo, err := geos.NewCollection(geos.GEOMETRYCOLLECTION, clipGeos...)
+	if err != nil {
+		return err
 	}
 
 	for name, layer := range e.config.Layers {
@@ -98,7 +100,7 @@ func (e *Extractor) Run() error {
 			return err
 		}
 
-		err = e.ClipLayer(clipGeos, output)
+		err = e.ClipLayer(clipGeo, output)
 		if err != nil {
 			return err
 		}
@@ -143,29 +145,15 @@ func (e *Extractor) ProcessLayer(name string, layer *Layer) (*LayerOutput, error
 	return output, nil
 }
 
-type ClipGeometry struct {
-	Geometry *geos.Geometry
-	Prepared *geos.PGeometry
-}
-
-func (e *Extractor) ClipLayer(clipGeos []*ClipGeometry, output *LayerOutput) error {
+func (e *Extractor) ClipLayer(clipGeo *geos.Geometry, output *LayerOutput) error {
 	// Clip each extracted geometry with the land geometries
 	for _, feature := range output.Geometries {
-		for _, clipGeom := range clipGeos {
-			intersects, err := clipGeom.Prepared.Intersects(feature.Geometry)
-			if err != nil {
-				return err
-			}
-
-			if intersects {
-				clipped, err := feature.Geometry.Intersection(clipGeom.Geometry)
-				// We ignore clipping errors here, these may happen when a self-intersection occurs
-				if err == nil {
-					feature.Geometry = clipped
-				} else {
-					log.Println(err)
-				}
-			}
+		clipped, err := feature.Geometry.Intersection(clipGeo)
+		// We ignore clipping errors here, these may happen when a self-intersection occurs
+		if err == nil {
+			feature.Geometry = clipped
+		} else {
+			log.Println(err)
 		}
 	}
 
