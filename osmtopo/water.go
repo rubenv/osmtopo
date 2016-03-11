@@ -17,8 +17,8 @@ import (
 
 	"github.com/gogo/protobuf/proto"
 	"github.com/jonas-p/go-shp"
+	"github.com/paulmach/go.geojson"
 	"github.com/paulsmith/gogeos/geos"
-	"github.com/rubenv/osmtopo/geojson"
 )
 
 type Water struct {
@@ -62,7 +62,7 @@ func (l *Water) Import(zipfile string) error {
 	}
 	defer shape.Close()
 
-	features := make([]*Feature, 0)
+	geometries := make([]*Geometry, 0)
 	for shape.Next() {
 		n, p := shape.Shape()
 		poly, ok := p.(*shp.Polygon)
@@ -76,23 +76,23 @@ func (l *Water) Import(zipfile string) error {
 			return err
 		}
 
-		feature, err := l.processPolygon(id, poly)
+		geometry, err := l.processPolygon(id, poly)
 		if err != nil {
 			return err
 		}
-		if feature != nil {
-			features = append(features, feature)
+		if geometry != nil {
+			geometries = append(geometries, geometry)
 		}
 	}
 
-	log.Println("Removing old features")
-	err = l.store.removeFeatures("water")
+	log.Println("Removing old geometries")
+	err = l.store.removeGeometries("water")
 	if err != nil {
 		return err
 	}
 
-	log.Printf("Storing %d features", len(features))
-	err = l.store.addNewFeatures("water", features)
+	log.Printf("Storing %d geometries", len(geometries))
+	err = l.store.addNewGeometries("water", geometries)
 	if err != nil {
 		return err
 	}
@@ -124,7 +124,7 @@ func unpackFile(f *zip.File, folder string) error {
 	return err
 }
 
-func (l *Water) processPolygon(id int64, poly *shp.Polygon) (*Feature, error) {
+func (l *Water) processPolygon(id int64, poly *shp.Polygon) (*Geometry, error) {
 	totalArea := float64(0)
 
 	outer := make([][]shp.Point, 0)
@@ -197,7 +197,7 @@ func (l *Water) processPolygon(id int64, poly *shp.Polygon) (*Feature, error) {
 		return nil, err
 	}
 
-	out, err := geojson.FromGeos(feat)
+	out, err := GeometryFromGeos(feat)
 	if err != nil {
 		return nil, err
 	}
@@ -207,7 +207,7 @@ func (l *Water) processPolygon(id int64, poly *shp.Polygon) (*Feature, error) {
 		return nil, err
 	}
 
-	return &Feature{
+	return &Geometry{
 		Id:      proto.Int64(id),
 		Geojson: b,
 	}, nil
@@ -246,7 +246,7 @@ func shpToGeom(coords [][]shp.Point) ([]*geos.Geometry, error) {
 }
 
 func (l *Water) Export(filename string) error {
-	keys, err := l.store.GetFeatures("water")
+	keys, err := l.store.GetGeometries("water")
 	if err != nil {
 		return err
 	}
@@ -255,30 +255,23 @@ func (l *Water) Export(filename string) error {
 		return errors.New("No water found, did you forget to import first?")
 	}
 
-	result := &geojson.Feature{
-		Type: "FeatureCollection",
-	}
-
-	for _, key := range keys {
-		f, err := l.store.GetFeature("water", key)
+	geometries := make([]*geojson.Geometry, len(keys))
+	for i, key := range keys {
+		g, err := l.store.GetGeometry("water", key)
 		if err != nil {
 			return err
 		}
 
-		feature := &geojson.Feature{}
-		err = json.Unmarshal(f.GetGeojson(), feature)
+		geometry := &geojson.Geometry{}
+		err = json.Unmarshal(g.GetGeojson(), geometry)
 		if err != nil {
 			return err
 		}
 
-		if feature.Type == "FeatureCollection" {
-			for _, f := range feature.Features {
-				result.Features = append(result.Features, f)
-			}
-		} else {
-			result.Features = append(result.Features, feature)
-		}
+		geometries[i] = geometry
 	}
+
+	result := geojson.NewCollectionGeometry(geometries...)
 
 	out, err := os.Create(filename)
 	if err != nil {

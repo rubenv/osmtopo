@@ -8,8 +8,8 @@ import (
 	"os"
 	"path"
 
+	"github.com/paulmach/go.geojson"
 	"github.com/paulsmith/gogeos/geos"
-	"github.com/rubenv/osmtopo/geojson"
 )
 
 type ExtractConfig struct {
@@ -58,7 +58,7 @@ func (e *Extractor) Run() error {
 
 	// Load water geometries
 	log.Println("Loading water geometries")
-	keys, err := e.store.GetFeatures("water")
+	keys, err := e.store.GetGeometries("water")
 	if err != nil {
 		return err
 	}
@@ -69,18 +69,18 @@ func (e *Extractor) Run() error {
 
 	clipGeos := make([]*ClipGeometry, 0, len(keys))
 	for _, key := range keys {
-		f, err := e.store.GetFeature("water", key)
+		f, err := e.store.GetGeometry("water", key)
 		if err != nil {
 			return err
 		}
 
-		feature := &geojson.Feature{}
-		err = json.Unmarshal(f.GetGeojson(), feature)
+		geometry := &geojson.Geometry{}
+		err = json.Unmarshal(f.GetGeojson(), geometry)
 		if err != nil {
 			return err
 		}
 
-		geom, err := FeatureToGeos(feature)
+		geom, err := GeometryToGeos(geometry)
 		if err != nil {
 			return err
 		}
@@ -180,14 +180,13 @@ func (e *Extractor) StoreOutput(output *LayerOutput) error {
 	}
 
 	for _, geom := range output.Geometries {
-		out, err := FeatureFromGeos(geom.Geometry)
+		g, err := GeometryFromGeos(geom.Geometry)
 		if err != nil {
 			return err
 		}
 
-		out.Properties = map[string]string{
-			"id": fmt.Sprintf("%d", geom.ID),
-		}
+		out := geojson.NewFeature(g)
+		out.SetProperty("id", fmt.Sprintf("%d", geom.ID))
 
 		outFile, err := os.Create(path.Join(dir, fmt.Sprintf("%d.geojson", geom.ID)))
 		if err != nil {

@@ -14,7 +14,7 @@ It has these top-level messages:
 	Way
 	MemberEntry
 	Relation
-	Feature
+	Geometry
 */
 package osmtopo
 
@@ -185,24 +185,24 @@ func (m *Relation) GetMembers() []*MemberEntry {
 	return nil
 }
 
-type Feature struct {
+type Geometry struct {
 	Id               *int64 `protobuf:"zigzag64,1,req,name=id" json:"id,omitempty"`
 	Geojson          []byte `protobuf:"bytes,2,req,name=geojson" json:"geojson,omitempty"`
 	XXX_unrecognized []byte `json:"-"`
 }
 
-func (m *Feature) Reset()         { *m = Feature{} }
-func (m *Feature) String() string { return proto.CompactTextString(m) }
-func (*Feature) ProtoMessage()    {}
+func (m *Geometry) Reset()         { *m = Geometry{} }
+func (m *Geometry) String() string { return proto.CompactTextString(m) }
+func (*Geometry) ProtoMessage()    {}
 
-func (m *Feature) GetId() int64 {
+func (m *Geometry) GetId() int64 {
 	if m != nil && m.Id != nil {
 		return *m.Id
 	}
 	return 0
 }
 
-func (m *Feature) GetGeojson() []byte {
+func (m *Geometry) GetGeojson() []byte {
 	if m != nil {
 		return m.Geojson
 	}

@@ -7,7 +7,7 @@ import (
 	"strconv"
 
 	"github.com/kr/pretty"
-	"github.com/rubenv/osmtopo/geojson"
+	"github.com/rubenv/osmtopo/osmtopo"
 )
 
 type CmdGet struct {
@@ -25,7 +25,7 @@ func init() {
 }
 
 func (cmd CmdGet) Usage() string {
-	return "[node|way|relation|feature] id"
+	return "[node|way|relation|geometry] id"
 }
 
 func (cmd CmdGet) Execute(args []string) error {
@@ -65,18 +65,18 @@ func (cmd CmdGet) Execute(args []string) error {
 		}
 
 		fmt.Printf("%# v\n", pretty.Formatter(relation))
-	case "feature":
+	case "geometry":
 		relation, err := store.GetRelation(id)
 		if err != nil {
 			return fmt.Errorf("Failed to get relation: %s\n", err.Error())
 		}
 
-		feat, err := relation.ToGeometry(store)
+		geom, err := relation.ToGeometry(store)
 		if err != nil {
 			return err
 		}
 
-		out, err := geojson.FromGeos(feat)
+		out, err := osmtopo.GeometryFromGeos(geom)
 		if err != nil {
 			return err
 		}

@@ -151,7 +151,7 @@ func (s *Store) removeRelation(n *Relation) error {
 	return s.db.Write(s.wo, wb)
 }
 
-func (s *Store) addNewFeatures(prefix string, arr []*Feature) error {
+func (s *Store) addNewGeometries(prefix string, arr []*Geometry) error {
 	wb := gorocksdb.NewWriteBatch()
 	defer wb.Destroy()
 	for _, n := range arr {
@@ -159,14 +159,14 @@ func (s *Store) addNewFeatures(prefix string, arr []*Feature) error {
 		if err != nil {
 			return err
 		}
-		key := fmt.Sprintf("feature/%s/%d", prefix, n.GetId())
+		key := fmt.Sprintf("geometry/%s/%d", prefix, n.GetId())
 		wb.Put([]byte(key), data)
 	}
 	return s.db.Write(s.wo, wb)
 }
 
-func (s *Store) removeFeatures(prefix string) error {
-	keys, err := s.GetFeatures(prefix)
+func (s *Store) removeGeometries(prefix string) error {
+	keys, err := s.GetGeometries(prefix)
 	if err != nil {
 		return err
 	}
@@ -178,7 +178,7 @@ func (s *Store) removeFeatures(prefix string) error {
 	defer wb.Destroy()
 
 	for _, k := range keys {
-		key := fmt.Sprintf("feature/%s/%d", prefix, k)
+		key := fmt.Sprintf("geometry/%s/%d", prefix, k)
 		wb.Delete([]byte(key))
 	}
 
@@ -245,8 +245,8 @@ func (s *Store) GetRelation(id int64) (*Relation, error) {
 	return rel, nil
 }
 
-func (s *Store) GetFeature(prefix string, id int64) (*Feature, error) {
-	n, err := s.db.Get(s.ro, []byte(fmt.Sprintf("feature/%s/%d", prefix, id)))
+func (s *Store) GetGeometry(prefix string, id int64) (*Geometry, error) {
+	n, err := s.db.Get(s.ro, []byte(fmt.Sprintf("geometry/%s/%d", prefix, id)))
 	if err != nil {
 		return nil, err
 	}
@@ -256,7 +256,7 @@ func (s *Store) GetFeature(prefix string, id int64) (*Feature, error) {
 		return nil, nil
 	}
 
-	rel := &Feature{}
+	rel := &Geometry{}
 	err = proto.Unmarshal(n.Data(), rel)
 	if err != nil {
 		return nil, err
@@ -265,7 +265,7 @@ func (s *Store) GetFeature(prefix string, id int64) (*Feature, error) {
 	return rel, nil
 }
 
-func (s *Store) GetFeatures(prefix string) ([]int64, error) {
+func (s *Store) GetGeometries(prefix string) ([]int64, error) {
 	ro := gorocksdb.NewDefaultReadOptions()
 	ro.SetFillCache(false)
 
@@ -273,7 +273,7 @@ func (s *Store) GetFeatures(prefix string) ([]int64, error) {
 	defer it.Close()
 
 	result := make([]int64, 0)
-	keyPrefix := fmt.Sprintf("feature/%s/", prefix)
+	keyPrefix := fmt.Sprintf("geometry/%s/", prefix)
 	it.Seek([]byte(keyPrefix))
 	for it = it; it.Valid(); it.Next() {
 		key := it.Key()
