@@ -80,7 +80,7 @@ func (e *Extractor) Run() error {
 			return err
 		}
 
-		geom, err := feature.ToGeos()
+		geom, err := FeatureToGeos(feature)
 		if err != nil {
 			return err
 		}
@@ -180,7 +180,7 @@ func (e *Extractor) StoreOutput(output *LayerOutput) error {
 	}
 
 	for _, geom := range output.Geometries {
-		out, err := geojson.FromGeos(geom.Geometry)
+		out, err := FeatureFromGeos(geom.Geometry)
 		if err != nil {
 			return err
 		}
