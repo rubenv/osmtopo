@@ -316,6 +316,6 @@ func (s *Store) Extract(configPath, outPath string) error {
 	return extractor.Run()
 }
 
-func (s *Store) Land() *Land {
-	return &Land{store: s}
+func (s *Store) Water() *Water {
+	return &Water{store: s}
 }

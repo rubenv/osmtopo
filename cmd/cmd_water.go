@@ -9,25 +9,25 @@ import (
 	"github.com/cheggaaa/pb"
 )
 
-type CmdLand struct {
+type CmdWater struct {
 	global *GlobalOptions
 }
 
 func init() {
-	_, err := parser.AddCommand("land",
-		"Manage land polygon",
-		"Download, import, simplify and export land polygons",
-		&CmdLand{global: &globalOpts})
+	_, err := parser.AddCommand("water",
+		"Manage water polygon",
+		"Download, import, simplify and export water polygons",
+		&CmdWater{global: &globalOpts})
 	if err != nil {
 		panic(err)
 	}
 }
 
-func (cmd CmdLand) Usage() string {
+func (cmd CmdWater) Usage() string {
 	return "[download|import|export] filename"
 }
 
-func (cmd CmdLand) Execute(args []string) error {
+func (cmd CmdWater) Execute(args []string) error {
 	if len(args) != 2 {
 		return fmt.Errorf("Options missing, Usage: %s", cmd.Usage())
 	}
@@ -39,7 +39,7 @@ func (cmd CmdLand) Execute(args []string) error {
 		return err
 	}
 
-	land := store.Land()
+	water := store.Water()
 
 	switch args[0] {
 	case "download":
@@ -49,7 +49,7 @@ func (cmd CmdLand) Execute(args []string) error {
 		}
 		defer out.Close()
 
-		resp, err := http.Get("http://data.openstreetmapdata.com/land-polygons-split-4326.zip")
+		resp, err := http.Get("http://data.openstreetmapdata.com/water-polygons-split-4326.zip")
 		if err != nil {
 			return err
 		}
@@ -62,9 +62,9 @@ func (cmd CmdLand) Execute(args []string) error {
 		_, err = io.Copy(out, reader)
 		return err
 	case "import":
-		return land.Import(filename)
+		return water.Import(filename)
 	case "export":
-		return land.Export(filename)
+		return water.Export(filename)
 	}
 
 	return nil

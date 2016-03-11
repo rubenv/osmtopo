@@ -21,12 +21,12 @@ import (
 	"github.com/rubenv/osmtopo/geojson"
 )
 
-type Land struct {
+type Water struct {
 	store *Store
 }
 
-func (l *Land) Import(zipfile string) error {
-	tmp, err := ioutil.TempDir("", "land")
+func (l *Water) Import(zipfile string) error {
+	tmp, err := ioutil.TempDir("", "water")
 	if err != nil {
 		return err
 	}
@@ -86,13 +86,13 @@ func (l *Land) Import(zipfile string) error {
 	}
 
 	log.Println("Removing old features")
-	err = l.store.removeFeatures("land")
+	err = l.store.removeFeatures("water")
 	if err != nil {
 		return err
 	}
 
 	log.Printf("Storing %d features", len(features))
-	err = l.store.addNewFeatures("land", features)
+	err = l.store.addNewFeatures("water", features)
 	if err != nil {
 		return err
 	}
@@ -124,7 +124,7 @@ func unpackFile(f *zip.File, folder string) error {
 	return err
 }
 
-func (l *Land) processPolygon(id int64, poly *shp.Polygon) (*Feature, error) {
+func (l *Water) processPolygon(id int64, poly *shp.Polygon) (*Feature, error) {
 	totalArea := float64(0)
 
 	outer := make([][]shp.Point, 0)
@@ -245,14 +245,14 @@ func shpToGeom(coords [][]shp.Point) ([]*geos.Geometry, error) {
 	return linestrings, nil
 }
 
-func (l *Land) Export(filename string) error {
-	keys, err := l.store.GetFeatures("land")
+func (l *Water) Export(filename string) error {
+	keys, err := l.store.GetFeatures("water")
 	if err != nil {
 		return err
 	}
 
 	if len(keys) == 0 {
-		return errors.New("No land found, did you forget to import first?")
+		return errors.New("No water found, did you forget to import first?")
 	}
 
 	result := &geojson.Feature{
@@ -260,7 +260,7 @@ func (l *Land) Export(filename string) error {
 	}
 
 	for _, key := range keys {
-		f, err := l.store.GetFeature("land", key)
+		f, err := l.store.GetFeature("water", key)
 		if err != nil {
 			return err
 		}

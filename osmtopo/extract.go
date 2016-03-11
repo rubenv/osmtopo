@@ -56,20 +56,20 @@ func (e *Extractor) Run() error {
 		return err
 	}
 
-	// Load land geometries
-	log.Println("Loading land geometries")
-	keys, err := e.store.GetFeatures("land")
+	// Load water geometries
+	log.Println("Loading water geometries")
+	keys, err := e.store.GetFeatures("water")
 	if err != nil {
 		return err
 	}
 
 	if len(keys) == 0 {
-		return errors.New("No land found, did you forget to import first?")
+		return errors.New("No water found, did you forget to import first?")
 	}
 
-	clipGeos := make([]*geos.Geometry, 0, len(keys))
+	clipGeos := make([]*ClipGeometry, 0, len(keys))
 	for _, key := range keys {
-		f, err := e.store.GetFeature("land", key)
+		f, err := e.store.GetFeature("water", key)
 		if err != nil {
 			return err
 		}
@@ -85,12 +85,10 @@ func (e *Extractor) Run() error {
 			return err
 		}
 
-		clipGeos = append(clipGeos, geom)
-	}
-
-	clipGeo, err := geos.NewCollection(geos.GEOMETRYCOLLECTION, clipGeos...)
-	if err != nil {
-		return err
+		clipGeos = append(clipGeos, &ClipGeometry{
+			Geometry: geom,
+			Prepared: geom.Prepare(),
+		})
 	}
 
 	for name, layer := range e.config.Layers {
@@ -100,7 +98,7 @@ func (e *Extractor) Run() error {
 			return err
 		}
 
-		err = e.ClipLayer(clipGeo, output)
+		err = e.ClipLayer(clipGeos, output)
 		if err != nil {
 			return err
 		}
@@ -112,6 +110,11 @@ func (e *Extractor) Run() error {
 	}
 
 	return nil
+}
+
+type ClipGeometry struct {
+	Geometry *geos.Geometry
+	Prepared *geos.PGeometry
 }
 
 func (e *Extractor) ProcessLayer(name string, layer *Layer) (*LayerOutput, error) {
@@ -145,15 +148,24 @@ func (e *Extractor) ProcessLayer(name string, layer *Layer) (*LayerOutput, error
 	return output, nil
 }
 
-func (e *Extractor) ClipLayer(clipGeo *geos.Geometry, output *LayerOutput) error {
-	// Clip each extracted geometry with the land geometries
+func (e *Extractor) ClipLayer(clipGeos []*ClipGeometry, output *LayerOutput) error {
+	// Clip each extracted geometry with the water geometries
 	for _, feature := range output.Geometries {
-		clipped, err := feature.Geometry.Intersection(clipGeo)
-		// We ignore clipping errors here, these may happen when a self-intersection occurs
-		if err == nil {
-			feature.Geometry = clipped
-		} else {
-			log.Println(err)
+		for _, clipGeom := range clipGeos {
+			intersects, err := clipGeom.Prepared.Intersects(feature.Geometry)
+			if err != nil {
+				return err
+			}
+
+			if intersects {
+				clipped, err := feature.Geometry.Difference(clipGeom.Geometry)
+				// We ignore clipping errors here, these may happen when a self-intersection occurs
+				if err == nil {
+					feature.Geometry = clipped
+				} else {
+					log.Println(err)
+				}
+			}
 		}
 	}
 
