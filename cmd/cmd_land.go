@@ -49,7 +49,7 @@ func (cmd CmdLand) Execute(args []string) error {
 		}
 		defer out.Close()
 
-		resp, err := http.Get("http://data.openstreetmapdata.com/land-polygons-complete-4326.zip")
+		resp, err := http.Get("http://data.openstreetmapdata.com/land-polygons-split-4326.zip")
 		if err != nil {
 			return err
 		}
