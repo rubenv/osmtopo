@@ -1,6 +1,6 @@
-.PHONY: all base dev binaries container test push
+.PHONY: all base dev binaries container push
 
-all: container test
+all: container
 
 base: Dockerfile-base
 	rm -rf tmp/
@@ -20,16 +20,12 @@ dev: base Dockerfile-dev
 binaries: base dev
 	rm -rf tmp/
 	mkdir -p tmp/
-	docker run -ti --rm -v $(GOPATH)/src:/go/src rubenv/osmtopo-dev go get -tags=embed -v -t -d ./...
-	docker run -ti --rm -v $(GOPATH)/src:/go/src rubenv/osmtopo-dev go build -tags=embed -v -o tmp/osmtopo ./bin/osmtopo
+	docker run -ti --rm -v $(GOPATH)/src:/go/src rubenv/osmtopo-dev bash -c "go get -tags=embed -v -t -d ./... && go build -tags=embed -v -o tmp/osmtopo ./bin/osmtopo && go test -tags=embed -bench=. -benchmem -cover github.com/rubenv/osmtopo/..."
 
 container: binaries
 	cp Dockerfile-binaries tmp/Dockerfile
 	docker build -t rubenv/osmtopo tmp/
 	docker run -ti --rm rubenv/osmtopo osmtopo --help
-
-test: binaries
-	docker run -ti --rm -v $(GOPATH)/src:/go/src rubenv/osmtopo-dev go test -tags=embed -bench=. -benchmem -cover github.com/rubenv/osmtopo/...
 
 push:
 	docker push rubenv/osmtopo-base
