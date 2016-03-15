@@ -39,7 +39,8 @@ type LayerFeature struct {
 
 type ItemSelector struct {
 	// Select by ID
-	ID int64 `yaml:"id'`
+	ID   int64       `yaml:"id'`
+	Clip [][]float64 `yaml:"clip"`
 
 	// Select by admin level and parent
 	Parent     int64 `yaml:"parent'`
@@ -137,6 +138,8 @@ func (e *Extractor) ProcessLayer(name string, layer *Layer) (*LayerOutput, error
 			if err != nil {
 				return nil, err
 			}
+
+			fmt.Printf("%#v\n", item.Clip)
 
 			output.Geometries = append(output.Geometries, &LayerFeature{
 				ID:       item.ID,
