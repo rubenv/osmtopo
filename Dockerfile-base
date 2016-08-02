@@ -1,5 +1,4 @@
 FROM fedora:24
 
-RUN dnf -y install geos-devel zlib-devel bzip2-devel gcc-c++ make wget tar findutils && \
-    dnf -y remove tar wget make && \
+RUN dnf -y install geos-devel zlib-devel bzip2-devel gcc-c++ findutils && \
     dnf clean all
