@@ -2,7 +2,6 @@ package main
 
 import (
 	"log"
-	"os"
 
 	"github.com/rubenv/osmtopo/cmd"
 )
@@ -10,9 +9,6 @@ import (
 func main() {
 	err := cmd.Run()
 	if err != nil {
-		log.Printf(err.Error())
-		os.Exit(1)
+		log.Fatal(err.Error())
 	}
-
-	os.Exit(0)
 }
