@@ -6,7 +6,7 @@ base: Dockerfile-base
 	rm -rf tmp/
 	mkdir -p tmp/
 	cp Dockerfile-base tmp/Dockerfile
-	docker pull fedora:23
+	docker pull fedora:24
 	docker pull rubenv/osmtopo-base
 	docker build -t rubenv/osmtopo-base tmp/
 
