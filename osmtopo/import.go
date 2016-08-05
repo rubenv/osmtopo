@@ -7,6 +7,7 @@ import (
 
 	"github.com/omniscale/imposm3/element"
 	"github.com/omniscale/imposm3/parser/pbf"
+	"github.com/rubenv/osmtopo/osmtopo/model"
 )
 
 type Import struct {
@@ -98,7 +99,7 @@ func (i *Import) importNodes() {
 	coordChan := i.coords
 	el := []element.Node{}
 
-	nodes := []*Node{}
+	nodes := []*model.Node{}
 	batchSize := 2500000
 
 	for nodeChan != nil || coordChan != nil {
@@ -131,7 +132,7 @@ func (i *Import) importNodes() {
 				i.err = err
 			}
 			i.nodeCount += int64(len(nodes))
-			nodes = []*Node{}
+			nodes = []*model.Node{}
 		}
 	}
 
@@ -147,7 +148,7 @@ func (i *Import) importNodes() {
 func (i *Import) importWays() {
 	defer i.wg.Done()
 
-	ways := []*Way{}
+	ways := []*model.Way{}
 	batchSize := 10000000
 
 	for {
@@ -169,7 +170,7 @@ func (i *Import) importWays() {
 				i.err = err
 			}
 			i.wayCount += int64(len(ways))
-			ways = []*Way{}
+			ways = []*model.Way{}
 		}
 	}
 
@@ -185,7 +186,7 @@ func (i *Import) importWays() {
 func (i *Import) importRelations() {
 	defer i.wg.Done()
 
-	rels := []*Relation{}
+	rels := []*model.Relation{}
 	batchSize := 10000
 
 	for {
@@ -207,7 +208,7 @@ func (i *Import) importRelations() {
 				i.err = err
 			}
 			i.relationCount += int64(len(rels))
-			rels = []*Relation{}
+			rels = []*model.Relation{}
 		}
 	}
 

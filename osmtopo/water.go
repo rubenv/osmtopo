@@ -15,10 +15,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/gogo/protobuf/proto"
 	"github.com/jonas-p/go-shp"
 	"github.com/paulmach/go.geojson"
 	"github.com/paulsmith/gogeos/geos"
+	"github.com/rubenv/osmtopo/osmtopo/model"
 )
 
 type Water struct {
@@ -62,7 +62,7 @@ func (l *Water) Import(zipfile string) error {
 	}
 	defer shape.Close()
 
-	geometries := make([]*Geometry, 0)
+	geometries := make([]*model.Geometry, 0)
 	for shape.Next() {
 		n, p := shape.Shape()
 		poly, ok := p.(*shp.Polygon)
@@ -124,7 +124,7 @@ func unpackFile(f *zip.File, folder string) error {
 	return err
 }
 
-func (l *Water) processPolygon(id int64, poly *shp.Polygon) (*Geometry, error) {
+func (l *Water) processPolygon(id int64, poly *shp.Polygon) (*model.Geometry, error) {
 	totalArea := float64(0)
 
 	outer := make([][]shp.Point, 0)
@@ -207,8 +207,8 @@ func (l *Water) processPolygon(id int64, poly *shp.Polygon) (*Geometry, error) {
 		return nil, err
 	}
 
-	return &Geometry{
-		Id:      proto.Int64(id),
+	return &model.Geometry{
+		Id:      id,
 		Geojson: b,
 	}, nil
 }
@@ -263,7 +263,7 @@ func (l *Water) Export(filename string) error {
 		}
 
 		geometry := &geojson.Geometry{}
-		err = json.Unmarshal(g.GetGeojson(), geometry)
+		err = json.Unmarshal(g.Geojson, geometry)
 		if err != nil {
 			return err
 		}

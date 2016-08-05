@@ -1,103 +1,89 @@
 package osmtopo
 
 import (
-	"github.com/gogo/protobuf/proto"
 	"github.com/omniscale/imposm3/element"
 	"github.com/paulsmith/gogeos/geos"
+	"github.com/rubenv/osmtopo/osmtopo/model"
 	"github.com/rubenv/osmtopo/simplify"
 )
 
-func NodeFromEl(el element.Node) *Node {
-	node := &Node{
-		Id:  proto.Int64(el.Id),
-		Lat: proto.Float64(el.Lat),
-		Lon: proto.Float64(el.Long),
+func NodeFromEl(el element.Node) *model.Node {
+	node := &model.Node{
+		Id:  el.Id,
+		Lat: el.Lat,
+		Lon: el.Long,
 	}
-	tags := []*TagEntry{}
+	tags := []*model.TagEntry{}
 	for k, v := range el.Tags {
-		tags = append(tags, &TagEntry{
-			Key:   proto.String(k),
-			Value: proto.String(v),
+		tags = append(tags, &model.TagEntry{
+			Key:   k,
+			Value: v,
 		})
 	}
 	node.Tags = tags
 	return node
 }
 
-func WayFromEl(el element.Way) *Way {
-	way := &Way{
-		Id:   proto.Int64(el.Id),
+func WayFromEl(el element.Way) *model.Way {
+	way := &model.Way{
+		Id:   el.Id,
 		Refs: el.Refs,
 	}
-	tags := []*TagEntry{}
+	tags := []*model.TagEntry{}
 	for k, v := range el.Tags {
-		tags = append(tags, &TagEntry{
-			Key:   proto.String(k),
-			Value: proto.String(v),
+		tags = append(tags, &model.TagEntry{
+			Key:   k,
+			Value: v,
 		})
 	}
 	way.Tags = tags
 	return way
 }
 
-func RelationFromEl(n element.Relation) *Relation {
-	rel := &Relation{
-		Id: proto.Int64(n.Id),
+func RelationFromEl(n element.Relation) *model.Relation {
+	rel := &model.Relation{
+		Id: n.Id,
 	}
-	tags := []*TagEntry{}
+	tags := []*model.TagEntry{}
 	for k, v := range n.Tags {
-		tags = append(tags, &TagEntry{
-			Key:   proto.String(k),
-			Value: proto.String(v),
+		tags = append(tags, &model.TagEntry{
+			Key:   k,
+			Value: v,
 		})
 	}
 	rel.Tags = tags
-	members := []*MemberEntry{}
+	members := []*model.MemberEntry{}
 	for _, v := range n.Members {
-		members = append(members, &MemberEntry{
-			Id:   proto.Int64(v.Id),
-			Type: proto.Int32(int32(v.Type)),
-			Role: proto.String(v.Role),
+		members = append(members, &model.MemberEntry{
+			Id:   v.Id,
+			Type: int32(v.Type),
+			Role: v.Role,
 		})
 	}
 	rel.Members = members
 	return rel
 }
 
-func (r *Relation) GetTag(key string) (string, bool) {
-	if r.Tags == nil {
-		return "", false
-	}
-
-	for _, e := range r.Tags {
-		if e.GetKey() == key {
-			return e.GetValue(), true
-		}
-	}
-
-	return "", false
-}
-
-func (r *Relation) ToGeometry(s *Store) (*geos.Geometry, error) {
+func ToGeometry(r *model.Relation, s *Store) (*geos.Geometry, error) {
 	outerParts := [][]int64{}
 	innerParts := [][]int64{}
 	for _, m := range r.GetMembers() {
-		if m.GetType() == 1 && m.GetRole() == "outer" {
-			way, err := s.GetWay(m.GetId())
+		if m.Type == 1 && m.Role == "outer" {
+			way, err := s.GetWay(m.Id)
 			if err != nil {
 				return nil, err
 			}
 
-			outerParts = append(outerParts, way.GetRefs())
+			outerParts = append(outerParts, way.Refs)
 		}
 
-		if m.GetType() == 1 && m.GetRole() == "inner" {
-			way, err := s.GetWay(m.GetId())
+		if m.Type == 1 && m.Role == "inner" {
+			way, err := s.GetWay(m.Id)
 			if err != nil {
 				return nil, err
 			}
 
-			innerParts = append(innerParts, way.GetRefs())
+			innerParts = append(innerParts, way.Refs)
 		}
 	}
 
@@ -136,7 +122,7 @@ func expandPoly(store *Store, coords []int64) (*geos.Geometry, error) {
 		if err != nil {
 			return nil, err
 		}
-		points[i] = geos.Coord{X: node.GetLon(), Y: node.GetLat()}
+		points[i] = geos.Coord{X: node.Lon, Y: node.Lat}
 	}
 
 	return geos.NewPolygon(points)

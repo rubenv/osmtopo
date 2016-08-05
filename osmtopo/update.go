@@ -1,6 +1,9 @@
 package osmtopo
 
-import "github.com/omniscale/imposm3/diff/parser"
+import (
+	"github.com/omniscale/imposm3/diff/parser"
+	"github.com/rubenv/osmtopo/osmtopo/model"
+)
 
 type Update struct {
 	Store    *Store
@@ -78,13 +81,13 @@ func (u *Update) process(c parser.DiffElem) error {
 
 	if c.Add {
 		if c.Node != nil {
-			u.Store.addNewNodes([]*Node{NodeFromEl(*c.Node)})
+			u.Store.addNewNodes([]*model.Node{NodeFromEl(*c.Node)})
 		}
 		if c.Way != nil {
-			u.Store.addNewWays([]*Way{WayFromEl(*c.Way)})
+			u.Store.addNewWays([]*model.Way{WayFromEl(*c.Way)})
 		}
 		if c.Rel != nil {
-			u.Store.addNewRelations([]*Relation{RelationFromEl(*c.Rel)})
+			u.Store.addNewRelations([]*model.Relation{RelationFromEl(*c.Rel)})
 		}
 	}
 	return nil

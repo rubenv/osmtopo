@@ -1,7 +1,5 @@
 package osmtopo
 
-//go:generate protoc --gogo_out=. storage.proto
-
 import (
 	"fmt"
 	"io/ioutil"
@@ -11,8 +9,8 @@ import (
 
 	"gopkg.in/yaml.v1"
 
-	"github.com/gogo/protobuf/proto"
 	"github.com/omniscale/imposm3/parser/pbf"
+	"github.com/rubenv/osmtopo/osmtopo/model"
 	"github.com/tecbot/gorocksdb"
 )
 
@@ -88,78 +86,78 @@ func (s *Store) Reindex() error {
 	return s.indexer.reindex()
 }
 
-func (s *Store) addNewNodes(arr []*Node) error {
+func (s *Store) addNewNodes(arr []*model.Node) error {
 	wb := gorocksdb.NewWriteBatch()
 	defer wb.Destroy()
 	for _, n := range arr {
-		data, err := proto.Marshal(n)
+		data, err := n.Marshal()
 		if err != nil {
 			return err
 		}
-		wb.Put([]byte(fmt.Sprintf("node/%d", n.GetId())), data)
+		wb.Put([]byte(fmt.Sprintf("node/%d", n.Id)), data)
 	}
 	return s.db.Write(s.wo, wb)
 }
 
-func (s *Store) removeNode(n *Node) error {
+func (s *Store) removeNode(n *model.Node) error {
 	wb := gorocksdb.NewWriteBatch()
 	defer wb.Destroy()
-	wb.Delete([]byte(fmt.Sprintf("node/%d", n.GetId())))
+	wb.Delete([]byte(fmt.Sprintf("node/%d", n.Id)))
 	return s.db.Write(s.wo, wb)
 }
 
-func (s *Store) addNewWays(arr []*Way) error {
+func (s *Store) addNewWays(arr []*model.Way) error {
 	wb := gorocksdb.NewWriteBatch()
 	defer wb.Destroy()
 	for _, n := range arr {
-		data, err := proto.Marshal(n)
+		data, err := n.Marshal()
 		if err != nil {
 			return err
 		}
-		wb.Put([]byte(fmt.Sprintf("way/%d", n.GetId())), data)
+		wb.Put([]byte(fmt.Sprintf("way/%d", n.Id)), data)
 	}
 	return s.db.Write(s.wo, wb)
 }
 
-func (s *Store) removeWay(n *Way) error {
+func (s *Store) removeWay(n *model.Way) error {
 	wb := gorocksdb.NewWriteBatch()
 	defer wb.Destroy()
-	wb.Delete([]byte(fmt.Sprintf("way/%d", n.GetId())))
+	wb.Delete([]byte(fmt.Sprintf("way/%d", n.Id)))
 	return s.db.Write(s.wo, wb)
 }
 
-func (s *Store) addNewRelations(arr []*Relation) error {
+func (s *Store) addNewRelations(arr []*model.Relation) error {
 	wb := gorocksdb.NewWriteBatch()
 	defer wb.Destroy()
 	for _, n := range arr {
-		data, err := proto.Marshal(n)
+		data, err := n.Marshal()
 		if err != nil {
 			return err
 		}
-		wb.Put([]byte(fmt.Sprintf("relation/%d", n.GetId())), data)
+		wb.Put([]byte(fmt.Sprintf("relation/%d", n.Id)), data)
 
 		s.indexer.newRelation(n, wb)
 	}
 	return s.db.Write(s.wo, wb)
 }
 
-func (s *Store) removeRelation(n *Relation) error {
+func (s *Store) removeRelation(n *model.Relation) error {
 	wb := gorocksdb.NewWriteBatch()
 	defer wb.Destroy()
 	s.indexer.removeRelation(n, wb)
-	wb.Delete([]byte(fmt.Sprintf("relation/%d", n.GetId())))
+	wb.Delete([]byte(fmt.Sprintf("relation/%d", n.Id)))
 	return s.db.Write(s.wo, wb)
 }
 
-func (s *Store) addNewGeometries(prefix string, arr []*Geometry) error {
+func (s *Store) addNewGeometries(prefix string, arr []*model.Geometry) error {
 	wb := gorocksdb.NewWriteBatch()
 	defer wb.Destroy()
 	for _, n := range arr {
-		data, err := proto.Marshal(n)
+		data, err := n.Marshal()
 		if err != nil {
 			return err
 		}
-		key := fmt.Sprintf("geometry/%s/%d", prefix, n.GetId())
+		key := fmt.Sprintf("geometry/%s/%d", prefix, n.Id)
 		wb.Put([]byte(key), data)
 	}
 	return s.db.Write(s.wo, wb)
@@ -185,7 +183,7 @@ func (s *Store) removeGeometries(prefix string) error {
 	return s.db.Write(s.wo, wb)
 }
 
-func (s *Store) GetNode(id int64) (*Node, error) {
+func (s *Store) GetNode(id int64) (*model.Node, error) {
 	n, err := s.db.Get(s.ro, []byte(fmt.Sprintf("node/%d", id)))
 	if err != nil {
 		return nil, err
@@ -196,8 +194,8 @@ func (s *Store) GetNode(id int64) (*Node, error) {
 		return nil, nil
 	}
 
-	node := &Node{}
-	err = proto.Unmarshal(n.Data(), node)
+	node := &model.Node{}
+	err = node.Unmarshal(n.Data())
 	if err != nil {
 		return nil, err
 	}
@@ -205,7 +203,7 @@ func (s *Store) GetNode(id int64) (*Node, error) {
 	return node, nil
 }
 
-func (s *Store) GetWay(id int64) (*Way, error) {
+func (s *Store) GetWay(id int64) (*model.Way, error) {
 	n, err := s.db.Get(s.ro, []byte(fmt.Sprintf("way/%d", id)))
 	if err != nil {
 		return nil, err
@@ -216,8 +214,8 @@ func (s *Store) GetWay(id int64) (*Way, error) {
 		return nil, nil
 	}
 
-	way := &Way{}
-	err = proto.Unmarshal(n.Data(), way)
+	way := &model.Way{}
+	err = way.Unmarshal(n.Data())
 	if err != nil {
 		return nil, err
 	}
@@ -225,7 +223,7 @@ func (s *Store) GetWay(id int64) (*Way, error) {
 	return way, nil
 }
 
-func (s *Store) GetRelation(id int64) (*Relation, error) {
+func (s *Store) GetRelation(id int64) (*model.Relation, error) {
 	n, err := s.db.Get(s.ro, []byte(fmt.Sprintf("relation/%d", id)))
 	if err != nil {
 		return nil, err
@@ -236,8 +234,8 @@ func (s *Store) GetRelation(id int64) (*Relation, error) {
 		return nil, nil
 	}
 
-	rel := &Relation{}
-	err = proto.Unmarshal(n.Data(), rel)
+	rel := &model.Relation{}
+	err = rel.Unmarshal(n.Data())
 	if err != nil {
 		return nil, err
 	}
@@ -245,7 +243,7 @@ func (s *Store) GetRelation(id int64) (*Relation, error) {
 	return rel, nil
 }
 
-func (s *Store) GetGeometry(prefix string, id int64) (*Geometry, error) {
+func (s *Store) GetGeometry(prefix string, id int64) (*model.Geometry, error) {
 	n, err := s.db.Get(s.ro, []byte(fmt.Sprintf("geometry/%s/%d", prefix, id)))
 	if err != nil {
 		return nil, err
@@ -256,8 +254,8 @@ func (s *Store) GetGeometry(prefix string, id int64) (*Geometry, error) {
 		return nil, nil
 	}
 
-	rel := &Geometry{}
-	err = proto.Unmarshal(n.Data(), rel)
+	rel := &model.Geometry{}
+	err = rel.Unmarshal(n.Data())
 	if err != nil {
 		return nil, err
 	}

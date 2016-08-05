@@ -76,7 +76,7 @@ func (e *Extractor) Run() error {
 		}
 
 		geometry := &geojson.Geometry{}
-		err = json.Unmarshal(f.GetGeojson(), geometry)
+		err = json.Unmarshal(f.Geojson, geometry)
 		if err != nil {
 			return err
 		}
@@ -134,7 +134,7 @@ func (e *Extractor) ProcessLayer(name string, layer *Layer) (*LayerOutput, error
 				return nil, fmt.Errorf("Unknown item ID: %d", item.ID)
 			}
 
-			geom, err := relation.ToGeometry(e.store)
+			geom, err := ToGeometry(relation, e.store)
 			if err != nil {
 				return nil, err
 			}

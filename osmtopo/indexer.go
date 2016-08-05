@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/gogo/protobuf/proto"
+	"github.com/rubenv/osmtopo/osmtopo/model"
 	"github.com/tecbot/gorocksdb"
 )
 
@@ -12,23 +13,23 @@ type Indexer struct {
 	store *Store
 }
 
-func (i *Indexer) newRelation(rel *Relation, wb *gorocksdb.WriteBatch) {
+func (i *Indexer) newRelation(rel *model.Relation, wb *gorocksdb.WriteBatch) {
 	if v, ok := rel.GetTag("admin_level"); ok {
-		i.indexTag(rel.GetId(), "admin_level", v, wb)
+		i.indexTag(rel.Id, "admin_level", v, wb)
 	}
 
 	if v, ok := rel.GetTag("name"); ok {
-		i.indexTag(rel.GetId(), "name", strings.ToLower(v), wb)
+		i.indexTag(rel.Id, "name", strings.ToLower(v), wb)
 	}
 }
 
-func (i *Indexer) removeRelation(rel *Relation, wb *gorocksdb.WriteBatch) {
+func (i *Indexer) removeRelation(rel *model.Relation, wb *gorocksdb.WriteBatch) {
 	if v, ok := rel.GetTag("admin_level"); ok {
-		i.deindexTag(rel.GetId(), "admin_level", v, wb)
+		i.deindexTag(rel.Id, "admin_level", v, wb)
 	}
 
 	if v, ok := rel.GetTag("name"); ok {
-		i.deindexTag(rel.GetId(), "name", strings.ToLower(v), wb)
+		i.deindexTag(rel.Id, "name", strings.ToLower(v), wb)
 	}
 }
 
@@ -55,7 +56,7 @@ func (i *Indexer) reindex() error {
 			break
 		}
 
-		rel := &Relation{}
+		rel := &model.Relation{}
 		err := proto.Unmarshal(it.Value().Data(), rel)
 		if err != nil {
 			return err
