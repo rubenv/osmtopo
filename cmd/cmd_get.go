@@ -71,7 +71,7 @@ func (cmd CmdGet) Execute(args []string) error {
 			return fmt.Errorf("Failed to get relation: %s\n", err.Error())
 		}
 
-		geom, err := relation.ToGeometry(store)
+		geom, err := osmtopo.ToGeometry(relation, store)
 		if err != nil {
 			return err
 		}
