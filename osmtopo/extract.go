@@ -12,19 +12,10 @@ import (
 	"github.com/paulsmith/gogeos/geos"
 )
 
-type ExtractConfig struct {
-	Languages []string          `yaml:"languages"`
-	Layers    map[string]*Layer `yaml:"layers"`
-}
-
 type Extractor struct {
 	store   *Store
 	config  *ExtractConfig
 	outPath string
-}
-
-type Layer struct {
-	Items []*ItemSelector `yaml:"items"`
 }
 
 type LayerOutput struct {
@@ -35,16 +26,6 @@ type LayerOutput struct {
 type LayerFeature struct {
 	ID       int64
 	Geometry *geos.Geometry
-}
-
-type ItemSelector struct {
-	// Select by ID
-	ID   int64       `yaml:"id'`
-	Clip [][]float64 `yaml:"clip"`
-
-	// Select by admin level and parent
-	Parent     int64 `yaml:"parent'`
-	AdminLevel int64 `yaml:"admin_level'`
 }
 
 func (e *Extractor) Run() error {
@@ -124,28 +105,30 @@ func (e *Extractor) ProcessLayer(name string, layer *Layer) (*LayerOutput, error
 	}
 
 	for _, item := range layer.Items {
-		if item.ID > 0 {
-			// ID-based selection
-			relation, err := e.store.GetRelation(item.ID)
-			if err != nil {
-				return nil, err
-			}
-			if item == nil {
-				return nil, fmt.Errorf("Unknown item ID: %d", item.ID)
-			}
-
-			geom, err := ToGeometry(relation, e.store)
-			if err != nil {
-				return nil, err
-			}
-
-			fmt.Printf("%#v\n", item.Clip)
-
-			output.Geometries = append(output.Geometries, &LayerFeature{
-				ID:       item.ID,
-				Geometry: geom,
-			})
+		if item.ID == 0 {
+			return nil, fmt.Errorf("ID missing for item: %v", item)
 		}
+
+		relation, err := e.store.GetRelation(item.ID)
+		if err != nil {
+			return nil, err
+		}
+		if item == nil {
+			return nil, fmt.Errorf("Unknown item ID: %d", item.ID)
+		}
+
+		geom, err := ToGeometry(relation, e.store)
+		if err != nil {
+			return nil, err
+		}
+
+		// TODO: Clip
+		fmt.Printf("%#v\n", item.Clip)
+
+		output.Geometries = append(output.Geometries, &LayerFeature{
+			ID:       item.ID,
+			Geometry: geom,
+		})
 	}
 
 	return output, nil

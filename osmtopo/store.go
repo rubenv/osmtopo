@@ -2,12 +2,9 @@ package osmtopo
 
 import (
 	"fmt"
-	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
-
-	"gopkg.in/yaml.v1"
 
 	"github.com/omniscale/imposm3/parser/pbf"
 	"github.com/rubenv/osmtopo/osmtopo/model"
@@ -294,13 +291,7 @@ func (s *Store) GetGeometries(prefix string) ([]int64, error) {
 }
 
 func (s *Store) Extract(configPath, outPath string) error {
-	data, err := ioutil.ReadFile(configPath)
-	if err != nil {
-		return err
-	}
-
-	config := &ExtractConfig{}
-	err = yaml.Unmarshal(data, config)
+	config, err := LoadConfig(configPath)
 	if err != nil {
 		return err
 	}
