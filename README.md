@@ -59,3 +59,9 @@ Try the following:
 ```
 ulimit -n 1024
 ```
+
+### It's using too much memory / CPU
+
+Working with big data isn't for the faint of heart. I don't recommend running
+this on a Raspberry Pi. Get something with an SSD, a beefy CPU and 16+GB of
+RAM.

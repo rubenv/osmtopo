@@ -5,6 +5,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"syscall"
 
 	"github.com/omniscale/imposm3/parser/pbf"
 	"github.com/rubenv/osmtopo/osmtopo/model"
@@ -21,7 +22,15 @@ type Store struct {
 }
 
 func NewStore(path string) (*Store, error) {
-	err := os.MkdirAll(path+"/ldb", 0755)
+	// Determine max number of open files
+	var rLimit syscall.Rlimit
+	err := syscall.Getrlimit(syscall.RLIMIT_NOFILE, &rLimit)
+	if err != nil {
+		return nil, err
+	}
+	maxOpen := int(rLimit.Cur - 50)
+
+	err = os.MkdirAll(path+"/ldb", 0755)
 	if err != nil {
 		return nil, err
 	}
@@ -40,6 +49,7 @@ func NewStore(path string) (*Store, error) {
 	bb.SetFilterPolicy(gorocksdb.NewBloomFilter(10))
 	opts.SetCreateIfMissing(true)
 	opts.SetBlockBasedTableFactory(bb)
+	opts.SetMaxOpenFiles(maxOpen)
 	db, err := gorocksdb.OpenDb(opts, path+"/ldb")
 	if err != nil {
 		return nil, err
