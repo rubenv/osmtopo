@@ -83,9 +83,11 @@ func (i *Import) updateProgress() {
 		<-tick
 	}
 
-	update()
-
+	seconds := int64(time.Now().Sub(i.started).Seconds())
+	elapsed := time.Duration(seconds) * time.Second
+	fmt.Printf("\r[N: %12d (%7d/s)] [W: %12d (%7d/s)] [R: %12d (%7d/s)] %s", i.nodeCount, i.nodeCount/seconds, i.wayCount, i.wayCount/seconds, i.relationCount, i.relationCount/seconds, elapsed)
 	fmt.Println()
+
 }
 
 func (i *Import) startParser() {
