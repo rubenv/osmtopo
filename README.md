@@ -5,6 +5,8 @@ useful shapes for use in maps.
 
 Work in progress!
 
+[![Build Status](https://travis-ci.org/rubenv/osmtopo.svg?branch=master)](https://travis-ci.org/rubenv/osmtopo)
+
 ## Quick start
 
 Get a suitable water polygon first:
