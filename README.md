@@ -41,3 +41,21 @@ Find a suitable data set:
 * Or the entire world: http://planet.openstreetmap.org/pbf/planet-latest.osm.pbf
 
 Note that big data sets take a long time to process, you've been warned!
+
+Import it:
+
+```
+osmtopo -d /path/to/store import belgium-latest.osm.pbf netherlands-latest.osm.pbf
+```
+
+## Troubleshooting
+
+### panic: file open: open belgium-latest.osm.pbf: too many open files
+
+You're probably using a Mac, which has idiotically low open file limits by default.
+
+Try the following:
+
+```
+ulimit -n 1024
+```
