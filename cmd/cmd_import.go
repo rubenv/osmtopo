@@ -21,7 +21,7 @@ func (cmd CmdImport) Usage() string {
 }
 
 func (cmd CmdImport) Execute(args []string) error {
-	if len(args) != 1 {
+	if len(args) < 1 {
 		return fmt.Errorf("PBF file not specified, Usage: %s", cmd.Usage())
 	}
 
@@ -30,9 +30,11 @@ func (cmd CmdImport) Execute(args []string) error {
 		return err
 	}
 
-	err = store.Import(args[0])
-	if err != nil {
-		return fmt.Errorf("Failed to import: %s\n", err.Error())
+	for _, arg := range args {
+		err = store.Import(arg)
+		if err != nil {
+			return fmt.Errorf("Failed to import: %s\n", err.Error())
+		}
 	}
 
 	return nil
