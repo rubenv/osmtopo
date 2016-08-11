@@ -14,7 +14,7 @@ import (
 
 type Extractor struct {
 	store   *Store
-	config  *ExtractConfig
+	config  *Config
 	outPath string
 }
 
@@ -29,7 +29,7 @@ type LayerFeature struct {
 }
 
 func (e *Extractor) Run() error {
-	if e.config.Layers == nil {
+	if e.config.Layer == nil {
 		return errors.New("No layers defined!")
 	}
 
@@ -73,23 +73,26 @@ func (e *Extractor) Run() error {
 		})
 	}
 
-	for name, layer := range e.config.Layers {
-		log.Printf("Processing layer %s", name)
-		output, err := e.ProcessLayer(name, layer)
-		if err != nil {
-			return err
-		}
+	/*
+		// TODO
+		for name, layer := range e.config.Layers {
+			log.Printf("Processing layer %s", name)
+			output, err := e.ProcessLayer(name, layer)
+			if err != nil {
+				return err
+			}
 
-		err = e.ClipLayer(clipGeos, output)
-		if err != nil {
-			return err
-		}
+			err = e.ClipLayer(clipGeos, output)
+			if err != nil {
+				return err
+			}
 
-		err = e.StoreOutput(output)
-		if err != nil {
-			return err
+			err = e.StoreOutput(output)
+			if err != nil {
+				return err
+			}
 		}
-	}
+	*/
 
 	return nil
 }
@@ -99,6 +102,8 @@ type ClipGeometry struct {
 	Prepared *geos.PGeometry
 }
 
+/*
+// TODO
 func (e *Extractor) ProcessLayer(name string, layer *Layer) (*LayerOutput, error) {
 	output := &LayerOutput{
 		Name: name,
@@ -133,6 +138,7 @@ func (e *Extractor) ProcessLayer(name string, layer *Layer) (*LayerOutput, error
 
 	return output, nil
 }
+*/
 
 func (e *Extractor) ClipLayer(clipGeos []*ClipGeometry, output *LayerOutput) error {
 	// Clip each extracted geometry with the water geometries

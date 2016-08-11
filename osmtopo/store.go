@@ -301,7 +301,7 @@ func (s *Store) GetGeometries(prefix string) ([]int64, error) {
 }
 
 func (s *Store) Extract(configPath, outPath string) error {
-	config, err := LoadConfig(configPath)
+	config, err := ParseConfig(configPath)
 	if err != nil {
 		return err
 	}

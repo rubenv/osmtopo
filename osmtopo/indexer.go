@@ -51,11 +51,8 @@ func (i *Indexer) reindex() error {
 	it := i.store.db.NewIterator(ro)
 	defer it.Close()
 
-	for it.Seek([]byte("relation")); it.Valid(); it.Next() {
-		if !strings.HasPrefix(string(it.Key().Data()), "relation") {
-			break
-		}
-
+	prefix := []byte("relation")
+	for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
 		rel := &model.Relation{}
 		err := proto.Unmarshal(it.Value().Data(), rel)
 		if err != nil {

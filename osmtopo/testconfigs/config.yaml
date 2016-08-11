@@ -1,0 +1,11 @@
+languages:
+  - en
+  - nl
+  - fr
+
+layer:
+  name: World
+  children:
+    - name: Europe
+      load: europe.yaml
+    - name: Africa
