@@ -7,19 +7,22 @@ import (
 	"log"
 	"os"
 	"path"
+	"strings"
 
 	"github.com/paulmach/go.geojson"
 	"github.com/paulsmith/gogeos/geos"
 )
 
 type Extractor struct {
-	store   *Store
-	config  *Config
-	outPath string
+	store    *Store
+	config   *Config
+	outPath  string
+	clipGeos []*ClipGeometry
 }
 
 type LayerOutput struct {
 	Name       string
+	Depth      int
 	Geometries []*LayerFeature
 }
 
@@ -72,7 +75,10 @@ func (e *Extractor) Run() error {
 			Prepared: geom.Prepare(),
 		})
 	}
+	e.clipGeos = clipGeos
 
+	e.config.Layer.Output = "toplevel"
+	return e.extractLayers([]*ConfigLayer{e.config.Layer}, 0)
 	/*
 		// TODO
 		for name, layer := range e.config.Layers {
@@ -97,48 +103,85 @@ func (e *Extractor) Run() error {
 	return nil
 }
 
+func (e *Extractor) extractLayers(layers []*ConfigLayer, depth int) error {
+	if len(layers) == 0 {
+		return nil
+	}
+
+	outputs := make(map[string]*LayerOutput)
+
+	// Collect geometries
+	geometries := 0
+	for _, layer := range layers {
+		if layer.ID == 0 {
+			continue
+		}
+
+		output, ok := outputs[layer.Output]
+		if !ok {
+			output = &LayerOutput{
+				Name:  layer.Output,
+				Depth: depth,
+			}
+			outputs[layer.Output] = output
+		}
+
+		output.Geometries = append(output.Geometries, &LayerFeature{
+			ID: layer.ID,
+		})
+		geometries++
+	}
+
+	log.Printf("Processing at level %d, %d geometries, %d outputs\n", depth, geometries, len(outputs))
+
+	for _, output := range outputs {
+		for _, item := range output.Geometries {
+			relation, err := e.store.GetRelation(item.ID)
+			if err != nil {
+				return err
+			}
+			if item == nil {
+				return fmt.Errorf("Unknown item ID: %d", item.ID)
+			}
+
+			geom, err := ToGeometry(relation, e.store)
+			if err != nil {
+				return err
+			}
+
+			item.Geometry = geom
+		}
+
+		err := e.ClipLayer(e.clipGeos, output)
+		if err != nil {
+			return err
+		}
+	}
+
+	// TODO: Simplify
+
+	for _, output := range outputs {
+		err := e.StoreOutput(output)
+		if err != nil {
+			return err
+		}
+	}
+
+	childLayers := make([]*ConfigLayer, 0)
+	for _, layer := range layers {
+		for _, child := range layer.Children {
+			child.Output = layer.Name
+			childLayers = append(childLayers, child)
+		}
+	}
+
+	return e.extractLayers(childLayers, depth+1)
+}
+
 type ClipGeometry struct {
 	Geometry *geos.Geometry
 	Prepared *geos.PGeometry
 }
-
-/*
-// TODO
-func (e *Extractor) ProcessLayer(name string, layer *Layer) (*LayerOutput, error) {
-	output := &LayerOutput{
-		Name: name,
-	}
-
-	for _, item := range layer.Items {
-		if item.ID == 0 {
-			return nil, fmt.Errorf("ID missing for item: %v", item)
-		}
-
-		relation, err := e.store.GetRelation(item.ID)
-		if err != nil {
-			return nil, err
-		}
-		if item == nil {
-			return nil, fmt.Errorf("Unknown item ID: %d", item.ID)
-		}
-
-		geom, err := ToGeometry(relation, e.store)
-		if err != nil {
-			return nil, err
-		}
-
-		// TODO: Clip
-		fmt.Printf("%#v\n", item.Clip)
-
-		output.Geometries = append(output.Geometries, &LayerFeature{
-			ID:       item.ID,
-			Geometry: geom,
-		})
-	}
-
-	return output, nil
-}
-*/
 
 func (e *Extractor) ClipLayer(clipGeos []*ClipGeometry, output *LayerOutput) error {
 	// Clip each extracted geometry with the water geometries
@@ -165,11 +208,17 @@ func (e *Extractor) ClipLayer(clipGeos []*ClipGeometry, output *LayerOutput) err
 }
 
 func (e *Extractor) StoreOutput(output *LayerOutput) error {
-	dir := path.Join(e.outPath, output.Name)
+	if len(output.Geometries) == 0 {
+		return nil
+	}
+
+	dir := path.Join(e.outPath, fmt.Sprintf("%d", output.Depth))
 	err := os.MkdirAll(dir, 0755)
 	if err != nil {
 		return err
 	}
+
+	fc := geojson.NewFeatureCollection()
 
 	for _, geom := range output.Geometries {
 		g, err := GeometryFromGeos(geom.Geometry)
@@ -180,16 +229,21 @@ func (e *Extractor) StoreOutput(output *LayerOutput) error {
 		out := geojson.NewFeature(g)
 		out.SetProperty("id", fmt.Sprintf("%d", geom.ID))
 
-		outFile, err := os.Create(path.Join(dir, fmt.Sprintf("%d.geojson", geom.ID)))
-		if err != nil {
-			return err
-		}
+		fc.AddFeature(out)
 
-		err = json.NewEncoder(outFile).Encode(out)
-		outFile.Close()
-		if err != nil {
-			return err
-		}
+	}
+
+	name := strings.Replace(output.Name, " ", "-", -1)
+	name = strings.ToLower(name)
+	outFile, err := os.Create(path.Join(dir, fmt.Sprintf("%s.geojson", name)))
+	if err != nil {
+		return err
+	}
+
+	err = json.NewEncoder(outFile).Encode(fc)
+	outFile.Close()
+	if err != nil {
+		return err
 	}
 
 	return nil

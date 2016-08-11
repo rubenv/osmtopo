@@ -10,11 +10,10 @@ import (
 )
 
 func TestExtract(t *testing.T) {
-	/*
-		if testing.Short() {
-			t.Skip("skipping test in short mode.")
-		}
-	*/
+	if testing.Short() {
+		t.Skip("skipping test in short mode.")
+	}
+
 	is := is.New(t)
 
 	folder, err := ioutil.TempDir("", "test")
@@ -39,5 +38,17 @@ func TestExtract(t *testing.T) {
 
 	outFolder := path.Join(folder, "out")
 	err = store.Extract("testconfigs/man/config.yaml", outFolder)
+	is.NoErr(err)
+
+	isFile(is, path.Join(outFolder, "0", "toplevel.geojson"))
+	isFile(is, path.Join(outFolder, "1", "isle-of-man.geojson"))
+	isFile(is, path.Join(outFolder, "2", "middle.geojson"))
+}
+
+func isFile(is is.I, path string) {
+	_, err := os.Stat(path)
+	if os.IsNotExist(err) {
+		is.Fail("File does not exist: ", path)
+	}
 	is.NoErr(err)
 }

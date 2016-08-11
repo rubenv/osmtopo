@@ -18,6 +18,8 @@ type ConfigLayer struct {
 	Load string      `yaml:"load"`
 	Clip [][]float64 `yaml:"clip"`
 
+	Output string `yaml:"-"`
+
 	Children []*ConfigLayer `yaml:"children"`
 }
 
