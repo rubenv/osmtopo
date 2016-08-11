@@ -167,6 +167,9 @@ func (e *Extractor) extractLayers(layers []*ConfigLayer, depth int) error {
 		}
 	}
 
+	// Free the outputs
+	outputs = nil
+
 	childLayers := make([]*ConfigLayer, 0)
 	for _, layer := range layers {
 		for _, child := range layer.Children {
