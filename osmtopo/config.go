@@ -9,6 +9,7 @@ import (
 
 type Config struct {
 	Languages []string     `yaml:"languages"`
+	Simplify  []int        `yaml:"simplify"`
 	Layer     *ConfigLayer `yaml:"layer"`
 }
 

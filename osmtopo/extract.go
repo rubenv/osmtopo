@@ -5,12 +5,14 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"math"
 	"os"
 	"path"
 	"strings"
 
 	"github.com/paulmach/go.geojson"
 	"github.com/paulsmith/gogeos/geos"
+	"github.com/rubenv/topojson"
 )
 
 type Extractor struct {
@@ -79,28 +81,6 @@ func (e *Extractor) Run() error {
 
 	e.config.Layer.Output = "toplevel"
 	return e.extractLayers([]*ConfigLayer{e.config.Layer}, 0)
-	/*
-		// TODO
-		for name, layer := range e.config.Layers {
-			log.Printf("Processing layer %s", name)
-			output, err := e.ProcessLayer(name, layer)
-			if err != nil {
-				return err
-			}
-
-			err = e.ClipLayer(clipGeos, output)
-			if err != nil {
-				return err
-			}
-
-			err = e.StoreOutput(output)
-			if err != nil {
-				return err
-			}
-		}
-	*/
-
-	return nil
 }
 
 func (e *Extractor) extractLayers(layers []*ConfigLayer, depth int) error {
@@ -149,6 +129,8 @@ func (e *Extractor) extractLayers(layers []*ConfigLayer, depth int) error {
 				return err
 			}
 
+			// TODO: Clip geometry if needed
+
 			item.Geometry = geom
 		}
 
@@ -158,18 +140,48 @@ func (e *Extractor) extractLayers(layers []*ConfigLayer, depth int) error {
 		}
 	}
 
-	// TODO: Simplify
+	// Build one big feature collection for simplification
+	fc := geojson.NewFeatureCollection()
+	for _, output := range outputs {
+		for _, item := range output.Geometries {
+			g, err := GeometryFromGeos(item.Geometry)
+			if err != nil {
+				return err
+			}
+
+			out := geojson.NewFeature(g)
+			out.SetProperty("id", fmt.Sprintf("%d", item.ID))
+
+			fc.AddFeature(out)
+
+			// No longer needed, we still have the ID as a reference
+			item.Geometry = nil
+		}
+	}
+
+	// Build an unquantized topology for simplification
+	maxErr := float64(0)
+	if len(e.config.Simplify) > depth {
+		maxErr = math.Pow(10, float64(-e.config.Simplify[depth]))
+	}
+	topo := topojson.NewTopology(fc, &topojson.TopologyOptions{
+		Quantize:   -1,
+		Simplify:   maxErr,
+		IDProperty: "id",
+	})
 
 	for _, output := range outputs {
-		err := e.StoreOutput(output)
+		err := e.StoreOutput(output, topo)
 		if err != nil {
 			return err
 		}
 	}
 
-	// Free the outputs
+	// Free the outputs & topology
 	outputs = nil
+	topo = nil
 
+	// Process the child layers
 	childLayers := make([]*ConfigLayer, 0)
 	for _, layer := range layers {
 		for _, child := range layer.Children {
@@ -210,41 +222,53 @@ func (e *Extractor) ClipLayer(clipGeos []*ClipGeometry, output *LayerOutput) err
 	return nil
 }
 
-func (e *Extractor) StoreOutput(output *LayerOutput) error {
+func (e *Extractor) StoreOutput(output *LayerOutput, topo *topojson.Topology) error {
 	if len(output.Geometries) == 0 {
 		return nil
 	}
 
+	ids := make([]string, len(output.Geometries))
+	for i, geom := range output.Geometries {
+		ids[i] = fmt.Sprintf("%d", geom.ID)
+	}
+
+	// Filter topology
+	topo = FilterTopology(topo, ids)
+	if len(topo.Objects) == 0 {
+		return nil
+	}
+
+	// Prepare output
 	dir := path.Join(e.outPath, fmt.Sprintf("%d", output.Depth))
 	err := os.MkdirAll(dir, 0755)
 	if err != nil {
 		return err
 	}
 
-	fc := geojson.NewFeatureCollection()
-
-	for _, geom := range output.Geometries {
-		g, err := GeometryFromGeos(geom.Geometry)
-		if err != nil {
-			return err
-		}
-
-		out := geojson.NewFeature(g)
-		out.SetProperty("id", fmt.Sprintf("%d", geom.ID))
-
-		fc.AddFeature(out)
-
-	}
-
 	name := strings.Replace(output.Name, " ", "-", -1)
 	name = strings.ToLower(name)
-	outFile, err := os.Create(path.Join(dir, fmt.Sprintf("%s.geojson", name)))
+
+	// Write TopoJSON
+	outFile, err := os.Create(path.Join(dir, fmt.Sprintf("%s.topojson", name)))
+	if err != nil {
+		return err
+	}
+	defer outFile.Close()
+
+	err = json.NewEncoder(outFile).Encode(topo)
 	if err != nil {
 		return err
 	}
 
-	err = json.NewEncoder(outFile).Encode(fc)
-	outFile.Close()
+	// Write GeoJSON
+	fc := topo.ToGeoJSON()
+	outFile2, err := os.Create(path.Join(dir, fmt.Sprintf("%s.geojson", name)))
+	if err != nil {
+		return err
+	}
+	defer outFile2.Close()
+
+	err = json.NewEncoder(outFile2).Encode(fc)
 	if err != nil {
 		return err
 	}

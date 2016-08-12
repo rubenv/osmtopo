@@ -41,8 +41,11 @@ func TestExtract(t *testing.T) {
 	is.NoErr(err)
 
 	isFile(is, path.Join(outFolder, "0", "toplevel.geojson"))
+	isFile(is, path.Join(outFolder, "0", "toplevel.topojson"))
 	isFile(is, path.Join(outFolder, "1", "isle-of-man.geojson"))
+	isFile(is, path.Join(outFolder, "1", "isle-of-man.topojson"))
 	isFile(is, path.Join(outFolder, "2", "middle.geojson"))
+	isFile(is, path.Join(outFolder, "2", "middle.topojson"))
 }
 
 func isFile(is is.I, path string) {
