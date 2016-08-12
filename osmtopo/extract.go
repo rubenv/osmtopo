@@ -10,6 +10,7 @@ import (
 	"path"
 	"strings"
 
+	"github.com/minio/pb"
 	"github.com/paulmach/go.geojson"
 	"github.com/paulsmith/gogeos/geos"
 	"github.com/rubenv/topojson"
@@ -114,6 +115,7 @@ func (e *Extractor) extractLayers(layers []*ConfigLayer, depth int) error {
 
 	log.Printf("Processing at level %d, %d geometries, %d outputs\n", depth, geometries, len(outputs))
 
+	bar := pb.StartNew(geometries)
 	for _, output := range outputs {
 		for _, item := range output.Geometries {
 			relation, err := e.store.GetRelation(item.ID)
@@ -132,6 +134,8 @@ func (e *Extractor) extractLayers(layers []*ConfigLayer, depth int) error {
 			// TODO: Clip geometry if needed
 
 			item.Geometry = geom
+
+			bar.Increment()
 		}
 
 		err := e.ClipLayer(e.clipGeos, output)
@@ -139,8 +143,11 @@ func (e *Extractor) extractLayers(layers []*ConfigLayer, depth int) error {
 			return err
 		}
 	}
+	bar.Finish()
 
 	// Build one big feature collection for simplification
+	log.Printf("Simplifying\n")
+
 	fc := geojson.NewFeatureCollection()
 	for _, output := range outputs {
 		for _, item := range output.Geometries {
@@ -159,7 +166,7 @@ func (e *Extractor) extractLayers(layers []*ConfigLayer, depth int) error {
 		}
 	}
 
-	// Build an unquantized topology for simplification
+	// Build a topology for simplification
 	maxErr := float64(0)
 	if len(e.config.Simplify) > depth {
 		maxErr = math.Pow(10, float64(-e.config.Simplify[depth]))
@@ -170,16 +177,22 @@ func (e *Extractor) extractLayers(layers []*ConfigLayer, depth int) error {
 		IDProperty: "id",
 	})
 
+	log.Printf("Outputting\n")
+	bar = pb.StartNew(len(outputs))
 	for _, output := range outputs {
 		err := e.StoreOutput(output, topo)
 		if err != nil {
 			return err
 		}
+		bar.Increment()
 	}
+	bar.Finish()
 
 	// Free the outputs & topology
 	outputs = nil
 	topo = nil
+
+	log.Printf("Processing at level %d: DONE\n", depth)
 
 	// Process the child layers
 	childLayers := make([]*ConfigLayer, 0)
