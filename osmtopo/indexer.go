@@ -53,8 +53,11 @@ func (i *Indexer) reindex() error {
 
 	prefix := []byte("relation")
 	for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
+		value := it.Value()
+
 		rel := &model.Relation{}
-		err := proto.Unmarshal(it.Value().Data(), rel)
+		err := proto.Unmarshal(value.Data(), rel)
+		value.Free()
 		if err != nil {
 			return err
 		}
