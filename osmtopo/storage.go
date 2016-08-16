@@ -1,6 +1,8 @@
 package osmtopo
 
 import (
+	"log"
+
 	"github.com/omniscale/imposm3/element"
 	"github.com/paulsmith/gogeos/geos"
 	"github.com/rubenv/osmtopo/osmtopo/model"
@@ -72,6 +74,10 @@ func ToGeometry(r *model.Relation, s *Store) (*geos.Geometry, error) {
 			way, err := s.GetWay(m.Id)
 			if err != nil {
 				return nil, err
+			}
+			if way == nil {
+				log.Printf("WARNING: Missing way %d for relation %d\n", m.Id, r.Id)
+				continue
 			}
 
 			outerParts = append(outerParts, way.Refs)

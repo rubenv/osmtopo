@@ -10,7 +10,7 @@ import (
 	"path"
 	"strings"
 
-	"github.com/minio/pb"
+	"github.com/cheggaaa/pb"
 	"github.com/paulmach/go.geojson"
 	"github.com/paulsmith/gogeos/geos"
 	"github.com/rubenv/topojson"
@@ -56,6 +56,7 @@ func (e *Extractor) Run() error {
 	}
 
 	clipGeos := make([]*ClipGeometry, 0, len(keys))
+	bar := pb.StartNew(len(keys))
 	for _, key := range keys {
 		f, err := e.store.GetGeometry("water", key)
 		if err != nil {
@@ -77,8 +78,11 @@ func (e *Extractor) Run() error {
 			Geometry: geom,
 			Prepared: geom.Prepare(),
 		})
+
+		bar.Increment()
 	}
 	e.clipGeos = clipGeos
+	bar.Finish()
 
 	e.config.Layer.Output = "toplevel"
 	return e.extractLayers([]*ConfigLayer{e.config.Layer}, 0)
@@ -128,7 +132,7 @@ func (e *Extractor) extractLayers(layers []*ConfigLayer, depth int) error {
 
 			geom, err := ToGeometry(relation, e.store)
 			if err != nil {
-				return err
+				return fmt.Errorf("Failed to convert to geometry: %s", err)
 			}
 
 			// TODO: Clip geometry if needed
