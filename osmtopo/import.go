@@ -151,7 +151,7 @@ func (i *Import) importWays() {
 	defer i.wg.Done()
 
 	ways := []*model.Way{}
-	batchSize := 10000000
+	batchSize := 100000
 
 	for {
 		arr, ok := <-i.ways
