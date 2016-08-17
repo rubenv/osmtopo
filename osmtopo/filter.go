@@ -10,6 +10,7 @@ func FilterTopology(topo *topojson.Topology, ids []string) *topojson.Topology {
 		Type:        topo.Type,
 		Transform:   topo.Transform,
 		BoundingBox: topo.BoundingBox,
+		Objects:     make(map[string]*topojson.Geometry),
 	}
 
 	arcMap := make(map[int]int)
@@ -17,7 +18,7 @@ func FilterTopology(topo *topojson.Topology, ids []string) *topojson.Topology {
 	for _, g := range topo.Objects {
 		geom := remapGeometry(arcMap, ids, g)
 		if geom != nil {
-			result.Objects = append(result.Objects, geom)
+			result.Objects[geom.ID] = geom
 		}
 	}
 

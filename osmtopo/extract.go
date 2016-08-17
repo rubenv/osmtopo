@@ -176,9 +176,10 @@ func (e *Extractor) extractLayers(layers []*ConfigLayer, depth int) error {
 		maxErr = math.Pow(10, float64(-e.config.Simplify[depth]))
 	}
 	topo := topojson.NewTopology(fc, &topojson.TopologyOptions{
-		Quantize:   -1,
-		Simplify:   maxErr,
-		IDProperty: "id",
+		PreQuantize:  0,
+		PostQuantize: 1e5,
+		Simplify:     maxErr,
+		IDProperty:   "id",
 	})
 
 	log.Printf("Outputting\n")
