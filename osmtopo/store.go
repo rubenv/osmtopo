@@ -318,3 +318,24 @@ func (s *Store) Extract(configPath, outPath string) error {
 func (s *Store) Water() *Water {
 	return &Water{store: s}
 }
+
+func (s *Store) Replicate() error {
+	return Replicate(s)
+}
+
+func (s *Store) GetConfig(key string) (string, error) {
+	n, err := s.db.Get(s.ro, []byte(fmt.Sprintf("config/%s", key)))
+	if err != nil {
+		return "", err
+	}
+	defer n.Free()
+
+	return string(n.Data()), nil
+}
+
+func (s *Store) SetConfig(key, value string) error {
+	wb := gorocksdb.NewWriteBatch()
+	defer wb.Destroy()
+	wb.Put([]byte(fmt.Sprintf("config/%s", key)), []byte(value))
+	return s.db.Write(s.wo, wb)
+}
