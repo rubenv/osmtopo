@@ -12,7 +12,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/minio/pb"
+	"github.com/cheggaaa/pb"
 )
 
 const OsmServer = "http://ftp5.gwdg.de/pub/misc/openstreetmap/planet.openstreetmap.org"
