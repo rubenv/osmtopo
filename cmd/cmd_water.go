@@ -57,6 +57,7 @@ func (cmd CmdWater) Execute(args []string) error {
 
 		bar := pb.New(int(resp.ContentLength)).SetUnits(pb.U_BYTES).Format("[=> ]")
 		bar.Start()
+		defer bar.Finish()
 
 		reader := bar.NewProxyReader(resp.Body)
 		_, err = io.Copy(out, reader)
