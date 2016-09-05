@@ -16,7 +16,8 @@ import (
 	"github.com/cheggaaa/pb"
 )
 
-const OsmServer = "http://ftp5.gwdg.de/pub/misc/openstreetmap/planet.openstreetmap.org"
+//const OsmServer = "http://ftp5.gwdg.de/pub/misc/openstreetmap/planet.openstreetmap.org"
+const OsmServer = "http://planet.openstreetmap.org"
 
 func Replicate(store *Store) error {
 	// Figure out if we have planet imported or not
