@@ -19,7 +19,7 @@ import (
 //const OsmServer = "http://ftp5.gwdg.de/pub/misc/openstreetmap/planet.openstreetmap.org"
 const OsmServer = "http://planet.openstreetmap.org"
 
-func Replicate(store *Store) error {
+func Replicate(store *Store, planet_file string) error {
 	// Figure out if we have planet imported or not
 	h, err := store.GetConfig("have_planet")
 	if err != nil {
@@ -52,15 +52,24 @@ func Replicate(store *Store) error {
 
 	// First import the planet, if needed
 	if !have_planet {
-		log.Println("Downloading planet.osm")
-		filename, err := downloadPlanet()
-		if err != nil {
-			return err
+		if planet_file != "" {
+			_, err := os.Stat(planet_file)
+			if err != nil {
+				return err
+			}
+		} else {
+			log.Println("Downloading planet.osm")
+			filename, err := downloadPlanet()
+			if err != nil {
+				return err
+			}
+			defer os.Remove(filename)
+
+			planet_file = filename
 		}
-		defer os.Remove(filename)
 
 		log.Println("Importing planet.osm")
-		err = store.Import(filename)
+		err = store.Import(planet_file)
 		if err != nil {
 			return err
 		}

@@ -3,6 +3,8 @@ package cmd
 import "fmt"
 
 type CmdReplicate struct {
+	Planet string `short:"p" long:"planet" description:"Planet file"`
+
 	global *GlobalOptions
 }
 
@@ -22,7 +24,7 @@ func (cmd CmdReplicate) Execute(args []string) error {
 		return err
 	}
 
-	err = store.Replicate()
+	err = store.Replicate(cmd.Planet)
 	if err != nil {
 		return fmt.Errorf("Failed to replicate: %s\n", err.Error())
 	}

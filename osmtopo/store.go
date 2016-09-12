@@ -319,8 +319,8 @@ func (s *Store) Water() *Water {
 	return &Water{store: s}
 }
 
-func (s *Store) Replicate() error {
-	return Replicate(s)
+func (s *Store) Replicate(planet_file string) error {
+	return Replicate(s, planet_file)
 }
 
 func (s *Store) GetConfig(key string) (string, error) {

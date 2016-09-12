@@ -10,7 +10,7 @@ import (
 )
 
 type GlobalOptions struct {
-	DataStore string `short:"d"long:"datastore" description:"Data store path (required)"`
+	DataStore string `short:"d" long:"datastore" description:"Data store path (required)"`
 }
 
 var globalOpts = GlobalOptions{}
