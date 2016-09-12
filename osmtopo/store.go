@@ -50,6 +50,7 @@ func NewStore(path string) (*Store, error) {
 	opts.SetCreateIfMissing(true)
 	opts.SetBlockBasedTableFactory(bb)
 	opts.SetMaxOpenFiles(maxOpen)
+	opts.SetMaxBackgroundCompactions(1)
 	db, err := gorocksdb.OpenDb(opts, path+"/ldb")
 	if err != nil {
 		return nil, err
