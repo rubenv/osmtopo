@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/omniscale/imposm3/parser/pbf"
 	"github.com/rubenv/osmtopo/osmtopo/model"
@@ -69,14 +70,22 @@ func (s *Store) Close() {
 }
 
 func (s *Store) Import(file string) error {
+	stat, err := os.Stat(file)
+	if err != nil {
+		return err
+	}
+
+	key := fmt.Sprintf("%s-%s", stat.Name(), stat.ModTime().Format(time.RFC3339))
+
 	f, err := pbf.Open(file)
 	if err != nil {
 		return err
 	}
 
 	i := Import{
-		Store: s,
-		File:  f,
+		Store:    s,
+		File:     f,
+		StateKey: key,
 	}
 	return i.Run()
 }
@@ -338,5 +347,32 @@ func (s *Store) SetConfig(key, value string) error {
 	wb := gorocksdb.NewWriteBatch()
 	defer wb.Destroy()
 	wb.Put([]byte(fmt.Sprintf("config/%s", key)), []byte(value))
+	return s.db.Write(s.wo, wb)
+}
+
+func (s *Store) GetImportState(key string) (*model.ImportState, error) {
+	n, err := s.db.Get(s.ro, []byte(fmt.Sprintf("imports/%s", key)))
+	if err != nil {
+		return nil, err
+	}
+	defer n.Free()
+
+	state := &model.ImportState{}
+	err = state.Unmarshal(n.Data())
+	if err != nil {
+		return nil, err
+	}
+	return state, nil
+}
+
+func (s *Store) SetImportState(key string, state *model.ImportState) error {
+	data, err := state.Marshal()
+	if err != nil {
+		return err
+	}
+
+	wb := gorocksdb.NewWriteBatch()
+	defer wb.Destroy()
+	wb.Put([]byte(fmt.Sprintf("imports/%s", key)), data)
 	return s.db.Write(s.wo, wb)
 }
