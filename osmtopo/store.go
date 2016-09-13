@@ -29,7 +29,7 @@ func NewStore(path string) (*Store, error) {
 	if err != nil {
 		return nil, err
 	}
-	maxOpen := int(rLimit.Cur - 50)
+	maxOpen := int(rLimit.Cur - 100)
 
 	err = os.MkdirAll(path+"/ldb", 0755)
 	if err != nil {
