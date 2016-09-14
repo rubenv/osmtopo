@@ -1,6 +1,7 @@
 package osmtopo
 
 import (
+	"fmt"
 	"log"
 
 	"github.com/omniscale/imposm3/element"
@@ -127,6 +128,9 @@ func expandPoly(store *Store, coords []int64) (*geos.Geometry, error) {
 		node, err := store.GetNode(c)
 		if err != nil {
 			return nil, err
+		}
+		if node == nil {
+			return nil, fmt.Errorf("Missing node: %d", c)
 		}
 		points[i] = geos.Coord{X: node.Lon, Y: node.Lat}
 	}
