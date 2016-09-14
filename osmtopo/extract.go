@@ -121,6 +121,8 @@ func (e *Extractor) extractLayers(layers []*ConfigLayer, depth int) error {
 
 	log.Printf("Processing at level %d, %d geometries, %d outputs\n", depth, geometries, len(outputs))
 
+	properties := make(map[int64]map[string]string)
+
 	bar := pb.StartNew(geometries)
 	for _, output := range outputs {
 		for _, item := range output.Geometries {
@@ -131,6 +133,24 @@ func (e *Extractor) extractLayers(layers []*ConfigLayer, depth int) error {
 			if item == nil {
 				return fmt.Errorf("Unknown item ID: %d", item.ID)
 			}
+
+			props := make(map[string]string)
+			if v, ok := relation.GetTag("name"); ok {
+				props["name"] = v
+			}
+			for _, lang := range e.config.Languages {
+				k := fmt.Sprintf("name:%s", lang)
+				if v, ok := relation.GetTag(k); ok {
+					if lang == "en" {
+						l, ok := props["name"]
+						if ok && l == v {
+							continue
+						}
+					}
+					props[k] = v
+				}
+			}
+			properties[item.ID] = props
 
 			geom, err := ToGeometry(relation, e.store)
 			if err != nil {
@@ -164,6 +184,9 @@ func (e *Extractor) extractLayers(layers []*ConfigLayer, depth int) error {
 
 			out := geojson.NewFeature(g)
 			out.SetProperty("id", fmt.Sprintf("%d", item.ID))
+			for k, v := range properties[item.ID] {
+				out.SetProperty(k, v)
+			}
 
 			fc.AddFeature(out)
 
