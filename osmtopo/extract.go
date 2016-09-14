@@ -16,6 +16,8 @@ import (
 	"github.com/rubenv/topojson"
 )
 
+const toplevelName = "toplevel"
+
 type Extractor struct {
 	store    *Store
 	config   *Config
@@ -84,7 +86,7 @@ func (e *Extractor) Run() error {
 	e.clipGeos = clipGeos
 	bar.Finish()
 
-	e.config.Layer.Output = "toplevel"
+	e.config.Layer.Output = toplevelName
 	return e.extractLayers([]*ConfigLayer{e.config.Layer}, 0)
 }
 
@@ -203,7 +205,11 @@ func (e *Extractor) extractLayers(layers []*ConfigLayer, depth int) error {
 	childLayers := make([]*ConfigLayer, 0)
 	for _, layer := range layers {
 		for _, child := range layer.Children {
-			child.Output = layer.Name
+			output := layer.Name
+			if layer.Output != "toplevel" {
+				output = fmt.Sprintf("%s-%s", layer.Output, output)
+			}
+			child.Output = output
 			childLayers = append(childLayers, child)
 		}
 	}
