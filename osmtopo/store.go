@@ -329,6 +329,10 @@ func (s *Store) Water() *Water {
 	return &Water{store: s}
 }
 
+func (s *Store) Land() *Land {
+	return &Land{store: s}
+}
+
 func (s *Store) Replicate(planet_file string) error {
 	return Replicate(s, planet_file)
 }
