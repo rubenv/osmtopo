@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"log"
 	"math"
@@ -17,7 +16,6 @@ import (
 
 	"github.com/jonas-p/go-shp"
 	"github.com/paulmach/go.geojson"
-	"github.com/paulsmith/gogeos/geos"
 	"github.com/rubenv/osmtopo/osmtopo/model"
 )
 
@@ -102,31 +100,7 @@ func (l *Water) Import(zipfile string) error {
 	return nil
 }
 
-func unpackFile(f *zip.File, folder string) error {
-	log.Printf("Unpacking %s\n", f.Name)
-
-	parts := strings.Split(f.Name, "/")
-	name := parts[len(parts)-1]
-
-	out, err := os.Create(path.Join(folder, name))
-	if err != nil {
-		return err
-	}
-	defer out.Close()
-
-	rc, err := f.Open()
-	if err != nil {
-		return err
-	}
-	defer rc.Close()
-
-	_, err = io.Copy(out, rc)
-	return err
-}
-
 func (l *Water) processPolygon(id int64, poly *shp.Polygon) (*model.Geometry, error) {
-	totalArea := float64(0)
-
 	outer := make([][]shp.Point, 0)
 	inner := make([][]shp.Point, 0)
 
@@ -175,8 +149,6 @@ func (l *Water) processPolygon(id int64, poly *shp.Polygon) (*model.Geometry, er
 			// area
 			inner = append(inner, points)
 		}
-
-		totalArea += area
 	}
 
 	if len(outer) == 0 {
@@ -211,38 +183,6 @@ func (l *Water) processPolygon(id int64, poly *shp.Polygon) (*model.Geometry, er
 		Id:      id,
 		Geojson: b,
 	}, nil
-}
-
-func ringArea(points []shp.Point) float64 {
-	result := float64(0)
-	length := len(points)
-	for i := 0; i < length; i++ {
-		next := (i + 1) % length
-
-		p1 := points[i]
-		p2 := points[next]
-
-		result += (p2.X - p1.X) * (p2.Y + p1.Y)
-	}
-
-	return result / 2
-}
-
-func shpToGeom(coords [][]shp.Point) ([]*geos.Geometry, error) {
-	linestrings := make([]*geos.Geometry, len(coords))
-	for i, v := range coords {
-		points := make([]geos.Coord, len(v))
-		for j, c := range v {
-			points[j] = geos.Coord{X: c.X, Y: c.Y}
-		}
-		ls, err := geos.NewPolygon(points)
-		if err != nil {
-			return nil, err
-		}
-		linestrings[i] = ls
-	}
-
-	return linestrings, nil
 }
 
 func (l *Water) Export(filename string) error {

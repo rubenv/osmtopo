@@ -1,8 +1,15 @@
 package osmtopo
 
 import (
+	"archive/zip"
 	"fmt"
+	"io"
+	"log"
+	"os"
+	"path"
+	"strings"
 
+	shp "github.com/jonas-p/go-shp"
 	"github.com/paulmach/go.geojson"
 	"github.com/paulsmith/gogeos/geos"
 )
@@ -176,4 +183,58 @@ func toCoordSlices(coords [][][]float64) ([][]geos.Coord, error) {
 	}
 
 	return result, nil
+}
+
+func ringArea(points []shp.Point) float64 {
+	result := float64(0)
+	length := len(points)
+	for i := 0; i < length; i++ {
+		next := (i + 1) % length
+
+		p1 := points[i]
+		p2 := points[next]
+
+		result += (p2.X - p1.X) * (p2.Y + p1.Y)
+	}
+
+	return result / 2
+}
+
+func shpToGeom(coords [][]shp.Point) ([]*geos.Geometry, error) {
+	linestrings := make([]*geos.Geometry, len(coords))
+	for i, v := range coords {
+		points := make([]geos.Coord, len(v))
+		for j, c := range v {
+			points[j] = geos.Coord{X: c.X, Y: c.Y}
+		}
+		ls, err := geos.NewPolygon(points)
+		if err != nil {
+			return nil, err
+		}
+		linestrings[i] = ls
+	}
+
+	return linestrings, nil
+}
+
+func unpackFile(f *zip.File, folder string) error {
+	log.Printf("Unpacking %s\n", f.Name)
+
+	parts := strings.Split(f.Name, "/")
+	name := parts[len(parts)-1]
+
+	out, err := os.Create(path.Join(folder, name))
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	rc, err := f.Open()
+	if err != nil {
+		return err
+	}
+	defer rc.Close()
+
+	_, err = io.Copy(out, rc)
+	return err
 }
