@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math"
 	"os"
 	"path"
 	"strings"
@@ -198,6 +199,21 @@ func ringArea(points []shp.Point) float64 {
 	}
 
 	return result / 2
+}
+
+func polyRingArea(points [][]float64) float64 {
+	result := float64(0)
+	length := len(points)
+	for i := 0; i < length; i++ {
+		next := (i + 1) % length
+
+		p1 := points[i]
+		p2 := points[next]
+
+		result += (p2[0] - p1[0]) * (p2[1] + p1[1])
+	}
+
+	return math.Abs(result / 2)
 }
 
 func shpToGeom(coords [][]shp.Point) ([]*geos.Geometry, error) {

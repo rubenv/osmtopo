@@ -15,8 +15,6 @@ import (
 	"strings"
 
 	"github.com/jonas-p/go-shp"
-	geo "github.com/paulmach/go.geo"
-	"github.com/paulmach/go.geo/reducers"
 	"github.com/paulmach/go.geojson"
 	"github.com/rubenv/osmtopo/osmtopo/model"
 )
@@ -118,22 +116,24 @@ func (l *Land) processPolygon(id int64, poly *shp.Polygon) (*model.Geometry, err
 			continue
 		}
 
-		// Simplify
-		path := geo.NewPathPreallocate(len(points), len(points))
-		for i, p := range points {
-			path.SetAt(i, &geo.Point{p.X, p.Y})
-		}
-		simplified := reducers.VisvalingamThreshold(path, 1e-5)
+		/*
+			// Simplify
+			path := geo.NewPathPreallocate(len(points), len(points))
+			for i, p := range points {
+				path.SetAt(i, &geo.Point{p.X, p.Y})
+			}
+			simplified := reducers.VisvalingamThreshold(path, 1e-8)
 
-		points = []shp.Point{}
-		length := simplified.Length()
-		for j := 0; j < length; j++ {
-			point := simplified.GetAt(j)
-			points = append(points, shp.Point{
-				X: point[0],
-				Y: point[1],
-			})
-		}
+			points = []shp.Point{}
+			length := simplified.Length()
+			for j := 0; j < length; j++ {
+				point := simplified.GetAt(j)
+				points = append(points, shp.Point{
+					X: point[0],
+					Y: point[1],
+				})
+			}
+		*/
 
 		// Drop tiny geometries
 		area := ringArea(points)
@@ -151,6 +151,8 @@ func (l *Land) processPolygon(id int64, poly *shp.Polygon) (*model.Geometry, err
 		}
 	}
 
+	poly = nil
+
 	if len(outer) == 0 {
 		return nil, nil
 	}
@@ -164,16 +166,44 @@ func (l *Land) processPolygon(id int64, poly *shp.Polygon) (*model.Geometry, err
 		return nil, err
 	}
 
+	outer = nil
+	inner = nil
+
 	feat, err := MakePolygons(outerPolys, innerPolys)
 	if err != nil {
 		return nil, err
 	}
+
+	outerPolys = nil
+	innerPolys = nil
 
 	out, err := GeometryFromGeos(feat)
 	if err != nil {
 		return nil, err
 	}
 
+	/*
+		// Simplify
+		fc := geojson.NewFeatureCollection()
+		fc.AddFeature(geojson.NewFeature(out))
+
+		topology := topojson.NewTopology(fc, &topojson.TopologyOptions{
+			Simplify: math.Pow(10, -8),
+		})
+
+		// Back to GeoJSON
+		fc = topology.ToGeoJSON()
+		if len(fc.Features) == 0 {
+			return nil, nil
+		}
+		out = fc.Features[0].Geometry
+
+		if out.Type == geojson.GeometryPolygon && polyRingArea(out.Polygon[0]) < 1e-5 {
+			return nil, nil
+		}
+	*/
+
+	// Store it
 	b, err := json.Marshal(out)
 	if err != nil {
 		return nil, err
