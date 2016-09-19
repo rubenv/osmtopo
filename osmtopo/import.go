@@ -10,6 +10,7 @@ import (
 	"github.com/omniscale/imposm3/element"
 	"github.com/omniscale/imposm3/parser/pbf"
 	"github.com/rubenv/osmtopo/osmtopo/model"
+	"github.com/rubenv/osmtopo/osmtopo/needidx"
 )
 
 type Import struct {
@@ -31,13 +32,13 @@ type Import struct {
 	wayCount      int64
 	relationCount int64
 
-	nodesNeeded map[int64]bool
-	waysNeeded  map[int64]bool
+	nodesNeeded *needidx.NeedIdx
+	waysNeeded  *needidx.NeedIdx
 }
 
 func (i *Import) Run() error {
-	i.nodesNeeded = make(map[int64]bool)
-	i.waysNeeded = make(map[int64]bool)
+	i.nodesNeeded = needidx.New()
+	i.waysNeeded = needidx.New()
 
 	i.pwg.Add(1)
 
@@ -196,7 +197,7 @@ func (i *Import) importNodes() {
 		}
 
 		for _, n := range el {
-			if !i.nodesNeeded[n.Id] {
+			if !i.nodesNeeded.IsNeeded(n.Id) {
 				continue
 			}
 			nodes = append(nodes, NodeFromEl(n))
@@ -248,12 +249,12 @@ func (i *Import) importWays() {
 		}
 
 		for _, n := range arr {
-			if !i.waysNeeded[n.Id] {
+			if !i.waysNeeded.IsNeeded(n.Id) {
 				continue
 			}
 
 			for _, r := range n.Refs {
-				i.nodesNeeded[r] = true
+				i.nodesNeeded.MarkNeeded(r)
 			}
 
 			ways = append(ways, WayFromEl(n))
@@ -307,7 +308,7 @@ func (i *Import) importRelations() {
 		for _, n := range arr {
 			for _, v := range n.Members {
 				if v.Type == element.WAY {
-					i.waysNeeded[v.Id] = true
+					i.waysNeeded.MarkNeeded(v.Id)
 				}
 			}
 
