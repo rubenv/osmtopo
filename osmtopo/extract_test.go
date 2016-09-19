@@ -33,9 +33,6 @@ func TestExtract(t *testing.T) {
 	err = store.Import("testconfigs/geodata/isle-of-man-latest.osm.pbf")
 	is.NoErr(err)
 
-	err = store.Reindex()
-	is.NoErr(err)
-
 	outFolder := path.Join(folder, "out")
 	err = store.Extract("testconfigs/man/config.yaml", outFolder)
 	is.NoErr(err)

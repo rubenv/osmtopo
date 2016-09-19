@@ -14,9 +14,8 @@ import (
 )
 
 type Store struct {
-	path    string
-	db      *gorocksdb.DB
-	indexer *Indexer
+	path string
+	db   *gorocksdb.DB
 
 	wo *gorocksdb.WriteOptions
 	ro *gorocksdb.ReadOptions
@@ -38,10 +37,6 @@ func NewStore(path string) (*Store, error) {
 
 	store := &Store{
 		path: path,
-	}
-
-	store.indexer = &Indexer{
-		store: store,
 	}
 
 	opts := gorocksdb.NewDefaultOptions()
@@ -99,10 +94,6 @@ func (s *Store) ApplyChange(file string) error {
 	return u.Run()
 }
 
-func (s *Store) Reindex() error {
-	return s.indexer.reindex()
-}
-
 func (s *Store) addNewNodes(arr []*model.Node) error {
 	wb := gorocksdb.NewWriteBatch()
 	defer wb.Destroy()
@@ -152,8 +143,6 @@ func (s *Store) addNewRelations(arr []*model.Relation) error {
 			return err
 		}
 		wb.Put([]byte(fmt.Sprintf("relation/%d", n.Id)), data)
-
-		s.indexer.newRelation(n, wb)
 	}
 	return s.db.Write(s.wo, wb)
 }
@@ -161,7 +150,6 @@ func (s *Store) addNewRelations(arr []*model.Relation) error {
 func (s *Store) removeRelation(n *model.Relation) error {
 	wb := gorocksdb.NewWriteBatch()
 	defer wb.Destroy()
-	s.indexer.removeRelation(n, wb)
 	wb.Delete([]byte(fmt.Sprintf("relation/%d", n.Id)))
 	return s.db.Write(s.wo, wb)
 }
