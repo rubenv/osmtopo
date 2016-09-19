@@ -3,12 +3,20 @@ package osmtopo
 import (
 	"fmt"
 	"log"
+	"strings"
 
 	"github.com/omniscale/imposm3/element"
 	"github.com/paulsmith/gogeos/geos"
 	"github.com/rubenv/osmtopo/osmtopo/model"
 	"github.com/rubenv/osmtopo/simplify"
 )
+
+func AcceptTag(k, v string) bool {
+	if k == "admin_level" || k == "name" || strings.HasPrefix(k, "name:") {
+		return true
+	}
+	return false
+}
 
 func NodeFromEl(el element.Node) *model.Node {
 	node := &model.Node{
@@ -18,6 +26,9 @@ func NodeFromEl(el element.Node) *model.Node {
 	}
 	tags := []*model.TagEntry{}
 	for k, v := range el.Tags {
+		if !AcceptTag(k, v) {
+			continue
+		}
 		tags = append(tags, &model.TagEntry{
 			Key:   k,
 			Value: v,
@@ -34,6 +45,9 @@ func WayFromEl(el element.Way) *model.Way {
 	}
 	tags := []*model.TagEntry{}
 	for k, v := range el.Tags {
+		if !AcceptTag(k, v) {
+			continue
+		}
 		tags = append(tags, &model.TagEntry{
 			Key:   k,
 			Value: v,
@@ -49,6 +63,9 @@ func RelationFromEl(n element.Relation) *model.Relation {
 	}
 	tags := []*model.TagEntry{}
 	for k, v := range n.Tags {
+		if !AcceptTag(k, v) {
+			continue
+		}
 		tags = append(tags, &model.TagEntry{
 			Key:   k,
 			Value: v,
