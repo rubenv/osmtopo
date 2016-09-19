@@ -1,7 +1,6 @@
 package osmtopo
 
 import (
-	"errors"
 	"fmt"
 	"log"
 	"sync"
@@ -13,18 +12,14 @@ import (
 )
 
 type Import struct {
-	Store    *Store
-	File     *pbf.Pbf
-	StateKey string
+	Store *Store
+	File  *pbf.Pbf
 
 	started time.Time
 	running bool
 	wg      sync.WaitGroup
 	pwg     sync.WaitGroup
 	err     error
-
-	state    *model.ImportState
-	newState *model.ImportState
 
 	coords    chan []element.Node
 	nodes     chan []element.Node
@@ -34,28 +29,19 @@ type Import struct {
 	nodeCount     int64
 	wayCount      int64
 	relationCount int64
+
+	nodesNeeded map[int64]bool
+	waysNeeded  map[int64]bool
 }
 
 func (i *Import) Run() error {
-	if i.StateKey == "" {
-		return errors.New("No state key set")
-	}
-
-	s, err := i.Store.GetImportState(i.StateKey)
-	if err != nil {
-		return err
-	}
-	i.state = s
-	i.newState = &model.ImportState{
-		LastNode:     s.LastNode,
-		LastWay:      s.LastWay,
-		LastRelation: s.LastRelation,
-	}
-
 	i.coords = make(chan []element.Node, 1000)
 	i.nodes = make(chan []element.Node, 1000)
 	i.ways = make(chan []element.Way, 1000)
 	i.relations = make(chan []element.Relation, 1000)
+
+	i.nodesNeeded = make(map[int64]bool)
+	i.waysNeeded = make(map[int64]bool)
 
 	i.wg.Add(3)
 	i.pwg.Add(1)
@@ -131,8 +117,6 @@ func (i *Import) importNodes() {
 	batchSize := 2500000
 
 	for nodeChan != nil || coordChan != nil {
-		have_nodes := false
-
 		select {
 		case arr, ok := <-coordChan:
 			if !ok {
@@ -146,7 +130,6 @@ func (i *Import) importNodes() {
 				continue
 			}
 			el = arr
-			have_nodes = true
 		}
 
 		if i.err != nil {
@@ -154,15 +137,7 @@ func (i *Import) importNodes() {
 		}
 
 		for _, n := range el {
-			if n.Id <= i.state.LastNode {
-				i.nodeCount += 1
-				continue
-			}
-
 			nodes = append(nodes, NodeFromEl(n))
-			if have_nodes {
-				i.newState.LastNode = n.Id
-			}
 		}
 
 		if len(nodes) > batchSize {
@@ -172,11 +147,6 @@ func (i *Import) importNodes() {
 			}
 			i.nodeCount += int64(len(nodes))
 			nodes = []*model.Node{}
-
-			err = i.Store.SetImportState(i.StateKey, i.newState)
-			if err != nil {
-				i.err = err
-			}
 		}
 	}
 
@@ -186,11 +156,6 @@ func (i *Import) importNodes() {
 			i.err = err
 		}
 		i.nodeCount += int64(len(nodes))
-
-		err = i.Store.SetImportState(i.StateKey, i.newState)
-		if err != nil {
-			i.err = err
-		}
 	}
 }
 
@@ -210,13 +175,7 @@ func (i *Import) importWays() {
 		}
 
 		for _, n := range arr {
-			if n.Id <= i.state.LastWay {
-				i.wayCount += 1
-				continue
-			}
-
 			ways = append(ways, WayFromEl(n))
-			i.newState.LastWay = n.Id
 		}
 
 		if len(ways) > batchSize {
@@ -226,11 +185,6 @@ func (i *Import) importWays() {
 			}
 			i.wayCount += int64(len(ways))
 			ways = []*model.Way{}
-
-			err = i.Store.SetImportState(i.StateKey, i.newState)
-			if err != nil {
-				i.err = err
-			}
 		}
 	}
 
@@ -240,11 +194,6 @@ func (i *Import) importWays() {
 			i.err = err
 		}
 		i.wayCount += int64(len(ways))
-
-		err = i.Store.SetImportState(i.StateKey, i.newState)
-		if err != nil {
-			i.err = err
-		}
 	}
 }
 
@@ -264,13 +213,7 @@ func (i *Import) importRelations() {
 		}
 
 		for _, n := range arr {
-			if n.Id <= i.state.LastRelation {
-				i.relationCount += 1
-				continue
-			}
-
 			rels = append(rels, RelationFromEl(n))
-			i.newState.LastRelation = n.Id
 		}
 
 		if len(rels) > batchSize {
@@ -280,11 +223,6 @@ func (i *Import) importRelations() {
 			}
 			i.relationCount += int64(len(rels))
 			rels = []*model.Relation{}
-
-			err = i.Store.SetImportState(i.StateKey, i.newState)
-			if err != nil {
-				i.err = err
-			}
 		}
 	}
 
@@ -294,10 +232,5 @@ func (i *Import) importRelations() {
 			i.err = err
 		}
 		i.relationCount += int64(len(rels))
-
-		err = i.Store.SetImportState(i.StateKey, i.newState)
-		if err != nil {
-			i.err = err
-		}
 	}
 }

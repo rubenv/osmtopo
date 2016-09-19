@@ -50,10 +50,3 @@ message Geometry {
     sint64 id = 1;
     bytes geojson = 2;
 }
-
-message ImportState {
-    sint64 last_node     = 1;
-    sint64 last_way      = 2;
-    sint64 last_relation = 3;
-
-}
