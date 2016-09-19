@@ -63,6 +63,7 @@ func (i *Import) Run() error {
 	go i.discardRelations()
 	go i.startParser()
 	i.wg.Wait()
+	i.waysNeeded = nil // No longer needed
 
 	// Pass 3: Import nodes
 	i.wg.Add(3)
@@ -309,7 +310,16 @@ func (i *Import) importRelations() {
 					i.waysNeeded[v.Id] = true
 				}
 			}
-			rels = append(rels, RelationFromEl(n))
+
+			r := RelationFromEl(n)
+			admin, _ := r.GetTag("admin_level")
+			natural, _ := r.GetTag("natural")
+			accepted := admin != "" || natural == "water"
+			if !accepted {
+				continue
+			}
+
+			rels = append(rels, r)
 		}
 
 		if len(rels) > batchSize {
