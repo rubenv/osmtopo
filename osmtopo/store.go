@@ -7,7 +7,6 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/omniscale/imposm3/parser/pbf"
 	"github.com/rubenv/osmtopo/osmtopo/model"
 	"github.com/tecbot/gorocksdb"
 )
@@ -64,19 +63,9 @@ func (s *Store) Close() {
 }
 
 func (s *Store) Import(file string) error {
-	_, err := os.Stat(file)
-	if err != nil {
-		return err
-	}
-
-	f, err := pbf.Open(file)
-	if err != nil {
-		return err
-	}
-
 	i := Import{
-		Store: s,
-		File:  f,
+		Store:    s,
+		Filename: file,
 	}
 	return i.Run()
 }

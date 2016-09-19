@@ -3,6 +3,7 @@ package osmtopo
 import (
 	"fmt"
 	"log"
+	"os"
 	"sync"
 	"time"
 
@@ -12,8 +13,8 @@ import (
 )
 
 type Import struct {
-	Store *Store
-	File  *pbf.Pbf
+	Store    *Store
+	Filename string
 
 	started time.Time
 	running bool
@@ -35,30 +36,54 @@ type Import struct {
 }
 
 func (i *Import) Run() error {
-	i.coords = make(chan []element.Node, 1000)
-	i.nodes = make(chan []element.Node, 1000)
-	i.ways = make(chan []element.Way, 1000)
-	i.relations = make(chan []element.Relation, 1000)
-
 	i.nodesNeeded = make(map[int64]bool)
 	i.waysNeeded = make(map[int64]bool)
 
-	i.wg.Add(3)
 	i.pwg.Add(1)
-	i.running = true
-	i.started = time.Now()
 
-	go i.importNodes()
-	go i.importWays()
-	go i.importRelations()
-	go i.startParser()
+	i.started = time.Now()
+	i.running = true
+
 	go i.updateProgress()
 
+	// Pass 1: Import relations
+	i.wg.Add(3)
+	i.prepareChannels()
+	go i.discardNodes()
+	go i.discardWays()
+	go i.importRelations()
+	go i.startParser()
 	i.wg.Wait()
+
+	// Pass 2: Import ways
+	i.wg.Add(3)
+	i.prepareChannels()
+	go i.discardNodes()
+	go i.importWays()
+	go i.discardRelations()
+	go i.startParser()
+	i.wg.Wait()
+
+	// Pass 3: Import nodes
+	i.wg.Add(3)
+	i.prepareChannels()
+	go i.importNodes()
+	go i.discardWays()
+	go i.discardRelations()
+	go i.startParser()
+	i.wg.Wait()
+
 	i.running = false
 	i.pwg.Wait()
 
 	return i.err
+}
+
+func (i *Import) prepareChannels() {
+	i.coords = make(chan []element.Node, 1000)
+	i.nodes = make(chan []element.Node, 1000)
+	i.ways = make(chan []element.Way, 1000)
+	i.relations = make(chan []element.Relation, 1000)
 }
 
 func (i *Import) updateProgress() {
@@ -72,9 +97,9 @@ func (i *Import) updateProgress() {
 
 	update := func() {
 		executing := time.Now().Sub(i.started)
-		newNodes := (i.nodeCount - prevNodeCount)
-		newWays := (i.wayCount - prevWayCount)
-		newRelations := (i.relationCount - prevRelationCount)
+		newNodes := i.nodeCount - prevNodeCount
+		newWays := i.wayCount - prevWayCount
+		newRelations := i.relationCount - prevRelationCount
 
 		elapsed := time.Duration(executing.Seconds()) * time.Second
 
@@ -103,8 +128,41 @@ func (i *Import) updateProgress() {
 }
 
 func (i *Import) startParser() {
-	parser := pbf.NewParser(i.File, i.coords, i.nodes, i.ways, i.relations)
+	_, err := os.Stat(i.Filename)
+	if err != nil {
+		i.err = err
+		return
+	}
+
+	f, err := pbf.Open(i.Filename)
+	if err != nil {
+		i.err = err
+		return
+	}
+
+	parser := pbf.NewParser(f, i.coords, i.nodes, i.ways, i.relations)
 	parser.Parse()
+}
+
+func (i *Import) discardNodes() {
+	defer i.wg.Done()
+	nodeChan := i.nodes
+	coordChan := i.coords
+
+	for nodeChan != nil || coordChan != nil {
+		select {
+		case _, ok := <-coordChan:
+			if !ok {
+				coordChan = nil
+				continue
+			}
+		case _, ok := <-nodeChan:
+			if !ok {
+				nodeChan = nil
+				continue
+			}
+		}
+	}
 }
 
 func (i *Import) importNodes() {
@@ -159,6 +217,17 @@ func (i *Import) importNodes() {
 	}
 }
 
+func (i *Import) discardWays() {
+	defer i.wg.Done()
+
+	for {
+		_, ok := <-i.ways
+		if !ok {
+			break
+		}
+	}
+}
+
 func (i *Import) importWays() {
 	defer i.wg.Done()
 
@@ -194,6 +263,17 @@ func (i *Import) importWays() {
 			i.err = err
 		}
 		i.wayCount += int64(len(ways))
+	}
+}
+
+func (i *Import) discardRelations() {
+	defer i.wg.Done()
+
+	for {
+		_, ok := <-i.relations
+		if !ok {
+			break
+		}
 	}
 }
 
