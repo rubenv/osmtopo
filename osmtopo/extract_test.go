@@ -19,6 +19,7 @@ func TestExtract(t *testing.T) {
 	folder, err := ioutil.TempDir("", "test")
 	is.NoErr(err)
 	defer os.RemoveAll(folder)
+	//log.Println(folder)
 
 	store, err := NewStore(path.Join(folder, "data"))
 	is.NoErr(err)

@@ -85,15 +85,6 @@ func (s *Store) Import(file string) error {
 	return i.Run()
 }
 
-func (s *Store) ApplyChange(file string) error {
-	u := Update{
-		Store:    s,
-		Filename: file,
-	}
-
-	return u.Run()
-}
-
 func (s *Store) addNewNodes(arr []*model.Node) error {
 	wb := gorocksdb.NewWriteBatch()
 	defer wb.Destroy()
