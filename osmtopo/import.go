@@ -195,6 +195,9 @@ func (i *Import) importNodes() {
 		}
 
 		for _, n := range el {
+			if !i.nodesNeeded[n.Id] {
+				continue
+			}
 			nodes = append(nodes, NodeFromEl(n))
 		}
 
@@ -244,6 +247,14 @@ func (i *Import) importWays() {
 		}
 
 		for _, n := range arr {
+			if !i.waysNeeded[n.Id] {
+				continue
+			}
+
+			for _, r := range n.Refs {
+				i.nodesNeeded[r] = true
+			}
+
 			ways = append(ways, WayFromEl(n))
 		}
 
@@ -293,6 +304,11 @@ func (i *Import) importRelations() {
 		}
 
 		for _, n := range arr {
+			for _, v := range n.Members {
+				if v.Type == element.WAY {
+					i.waysNeeded[v.Id] = true
+				}
+			}
 			rels = append(rels, RelationFromEl(n))
 		}
 
