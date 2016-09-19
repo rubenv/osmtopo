@@ -15,6 +15,8 @@ import (
 	"strings"
 
 	"github.com/jonas-p/go-shp"
+	geo "github.com/paulmach/go.geo"
+	"github.com/paulmach/go.geo/reducers"
 	"github.com/paulmach/go.geojson"
 	"github.com/rubenv/osmtopo/osmtopo/model"
 )
@@ -116,24 +118,22 @@ func (l *Water) processPolygon(id int64, poly *shp.Polygon) (*model.Geometry, er
 			continue
 		}
 
-		/*
-			// Simplify
-			path := geo.NewPathPreallocate(len(points), len(points))
-			for i, p := range points {
-				path.SetAt(i, &geo.Point{p.X, p.Y})
-			}
-			simplified := reducers.VisvalingamThreshold(path, 1e-8)
+		// Simplify
+		path := geo.NewPathPreallocate(len(points), len(points))
+		for i, p := range points {
+			path.SetAt(i, &geo.Point{p.X, p.Y})
+		}
+		simplified := reducers.VisvalingamThreshold(path, 1e-5)
 
-			points = []shp.Point{}
-			length := simplified.Length()
-			for j := 0; j < length; j++ {
-				point := simplified.GetAt(j)
-				points = append(points, shp.Point{
-					X: point[0],
-					Y: point[1],
-				})
-			}
-		*/
+		points = []shp.Point{}
+		length := simplified.Length()
+		for j := 0; j < length; j++ {
+			point := simplified.GetAt(j)
+			points = append(points, shp.Point{
+				X: point[0],
+				Y: point[1],
+			})
+		}
 
 		// Drop tiny geometries
 		area := ringArea(points)
@@ -165,6 +165,12 @@ func (l *Water) processPolygon(id int64, poly *shp.Polygon) (*model.Geometry, er
 	}
 
 	feat, err := MakePolygons(outerPolys, innerPolys)
+	if err != nil {
+		return nil, err
+	}
+
+	// Apply a buffer to avoid self-intersections
+	feat, err = feat.Buffer(0)
 	if err != nil {
 		return nil, err
 	}
