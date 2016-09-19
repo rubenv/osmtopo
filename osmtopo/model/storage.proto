@@ -19,18 +19,14 @@ message TagEntry {
 
 message Node {
     sint64 id = 1;
-    repeated TagEntry tags = 2;
 
-    double lat = 8;
-    double lon = 9;
-
+    double lat = 2;
+    double lon = 3;
 }
 
 message Way {
     sint64 id = 1;
-    repeated TagEntry tags = 2;
-
-    repeated sint64 refs = 8 [packed = true];
+    repeated sint64 refs = 2 [packed = true];
 }
 
 message MemberEntry {
@@ -42,8 +38,7 @@ message MemberEntry {
 message Relation {
     sint64 id = 1;
     repeated TagEntry tags = 2;
-
-    repeated MemberEntry members = 8;
+    repeated MemberEntry members = 3;
 }
 
 message Geometry {

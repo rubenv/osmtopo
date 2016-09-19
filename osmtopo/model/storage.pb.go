@@ -47,10 +47,9 @@ func (*TagEntry) ProtoMessage()               {}
 func (*TagEntry) Descriptor() ([]byte, []int) { return fileDescriptorStorage, []int{0} }
 
 type Node struct {
-	Id   int64       `protobuf:"zigzag64,1,opt,name=id,proto3" json:"id,omitempty"`
-	Tags []*TagEntry `protobuf:"bytes,2,rep,name=tags" json:"tags,omitempty"`
-	Lat  float64     `protobuf:"fixed64,8,opt,name=lat,proto3" json:"lat,omitempty"`
-	Lon  float64     `protobuf:"fixed64,9,opt,name=lon,proto3" json:"lon,omitempty"`
+	Id  int64   `protobuf:"zigzag64,1,opt,name=id,proto3" json:"id,omitempty"`
+	Lat float64 `protobuf:"fixed64,2,opt,name=lat,proto3" json:"lat,omitempty"`
+	Lon float64 `protobuf:"fixed64,3,opt,name=lon,proto3" json:"lon,omitempty"`
 }
 
 func (m *Node) Reset()                    { *m = Node{} }
@@ -58,30 +57,15 @@ func (m *Node) String() string            { return proto.CompactTextString(m) }
 func (*Node) ProtoMessage()               {}
 func (*Node) Descriptor() ([]byte, []int) { return fileDescriptorStorage, []int{1} }
 
-func (m *Node) GetTags() []*TagEntry {
-	if m != nil {
-		return m.Tags
-	}
-	return nil
-}
-
 type Way struct {
-	Id   int64       `protobuf:"zigzag64,1,opt,name=id,proto3" json:"id,omitempty"`
-	Tags []*TagEntry `protobuf:"bytes,2,rep,name=tags" json:"tags,omitempty"`
-	Refs []int64     `protobuf:"zigzag64,8,rep,packed,name=refs" json:"refs,omitempty"`
+	Id   int64   `protobuf:"zigzag64,1,opt,name=id,proto3" json:"id,omitempty"`
+	Refs []int64 `protobuf:"zigzag64,2,rep,packed,name=refs" json:"refs,omitempty"`
 }
 
 func (m *Way) Reset()                    { *m = Way{} }
 func (m *Way) String() string            { return proto.CompactTextString(m) }
 func (*Way) ProtoMessage()               {}
 func (*Way) Descriptor() ([]byte, []int) { return fileDescriptorStorage, []int{2} }
-
-func (m *Way) GetTags() []*TagEntry {
-	if m != nil {
-		return m.Tags
-	}
-	return nil
-}
 
 type MemberEntry struct {
 	Id   int64  `protobuf:"zigzag64,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -97,7 +81,7 @@ func (*MemberEntry) Descriptor() ([]byte, []int) { return fileDescriptorStorage,
 type Relation struct {
 	Id      int64          `protobuf:"zigzag64,1,opt,name=id,proto3" json:"id,omitempty"`
 	Tags    []*TagEntry    `protobuf:"bytes,2,rep,name=tags" json:"tags,omitempty"`
-	Members []*MemberEntry `protobuf:"bytes,8,rep,name=members" json:"members,omitempty"`
+	Members []*MemberEntry `protobuf:"bytes,3,rep,name=members" json:"members,omitempty"`
 }
 
 func (m *Relation) Reset()                    { *m = Relation{} }
@@ -198,14 +182,6 @@ func (this *Node) Equal(that interface{}) bool {
 	if this.Id != that1.Id {
 		return false
 	}
-	if len(this.Tags) != len(that1.Tags) {
-		return false
-	}
-	for i := range this.Tags {
-		if !this.Tags[i].Equal(that1.Tags[i]) {
-			return false
-		}
-	}
 	if this.Lat != that1.Lat {
 		return false
 	}
@@ -241,14 +217,6 @@ func (this *Way) Equal(that interface{}) bool {
 	}
 	if this.Id != that1.Id {
 		return false
-	}
-	if len(this.Tags) != len(that1.Tags) {
-		return false
-	}
-	for i := range this.Tags {
-		if !this.Tags[i].Equal(that1.Tags[i]) {
-			return false
-		}
 	}
 	if len(this.Refs) != len(that1.Refs) {
 		return false
@@ -425,25 +393,13 @@ func (m *Node) MarshalTo(data []byte) (int, error) {
 		i++
 		i = encodeVarintStorage(data, i, uint64((uint64(m.Id)<<1)^uint64((m.Id>>63))))
 	}
-	if len(m.Tags) > 0 {
-		for _, msg := range m.Tags {
-			data[i] = 0x12
-			i++
-			i = encodeVarintStorage(data, i, uint64(msg.Size()))
-			n, err := msg.MarshalTo(data[i:])
-			if err != nil {
-				return 0, err
-			}
-			i += n
-		}
-	}
 	if m.Lat != 0 {
-		data[i] = 0x41
+		data[i] = 0x11
 		i++
 		i = encodeFixed64Storage(data, i, uint64(math.Float64bits(float64(m.Lat))))
 	}
 	if m.Lon != 0 {
-		data[i] = 0x49
+		data[i] = 0x19
 		i++
 		i = encodeFixed64Storage(data, i, uint64(math.Float64bits(float64(m.Lon))))
 	}
@@ -470,18 +426,6 @@ func (m *Way) MarshalTo(data []byte) (int, error) {
 		i++
 		i = encodeVarintStorage(data, i, uint64((uint64(m.Id)<<1)^uint64((m.Id>>63))))
 	}
-	if len(m.Tags) > 0 {
-		for _, msg := range m.Tags {
-			data[i] = 0x12
-			i++
-			i = encodeVarintStorage(data, i, uint64(msg.Size()))
-			n, err := msg.MarshalTo(data[i:])
-			if err != nil {
-				return 0, err
-			}
-			i += n
-		}
-	}
 	if len(m.Refs) > 0 {
 		var j1 int
 		data3 := make([]byte, len(m.Refs)*10)
@@ -495,7 +439,7 @@ func (m *Way) MarshalTo(data []byte) (int, error) {
 			data3[j1] = uint8(x2)
 			j1++
 		}
-		data[i] = 0x42
+		data[i] = 0x12
 		i++
 		i = encodeVarintStorage(data, i, uint64(j1))
 		i += copy(data[i:], data3[:j1])
@@ -571,7 +515,7 @@ func (m *Relation) MarshalTo(data []byte) (int, error) {
 	}
 	if len(m.Members) > 0 {
 		for _, msg := range m.Members {
-			data[i] = 0x42
+			data[i] = 0x1a
 			i++
 			i = encodeVarintStorage(data, i, uint64(msg.Size()))
 			n, err := msg.MarshalTo(data[i:])
@@ -655,13 +599,6 @@ func NewPopulatedNode(r randyStorage, easy bool) *Node {
 	if r.Intn(2) == 0 {
 		this.Id *= -1
 	}
-	if r.Intn(10) != 0 {
-		v1 := r.Intn(5)
-		this.Tags = make([]*TagEntry, v1)
-		for i := 0; i < v1; i++ {
-			this.Tags[i] = NewPopulatedTagEntry(r, easy)
-		}
-	}
 	this.Lat = float64(r.Float64())
 	if r.Intn(2) == 0 {
 		this.Lat *= -1
@@ -681,16 +618,9 @@ func NewPopulatedWay(r randyStorage, easy bool) *Way {
 	if r.Intn(2) == 0 {
 		this.Id *= -1
 	}
-	if r.Intn(10) != 0 {
-		v2 := r.Intn(5)
-		this.Tags = make([]*TagEntry, v2)
-		for i := 0; i < v2; i++ {
-			this.Tags[i] = NewPopulatedTagEntry(r, easy)
-		}
-	}
-	v3 := r.Intn(10)
-	this.Refs = make([]int64, v3)
-	for i := 0; i < v3; i++ {
+	v1 := r.Intn(10)
+	this.Refs = make([]int64, v1)
+	for i := 0; i < v1; i++ {
 		this.Refs[i] = int64(r.Int63())
 		if r.Intn(2) == 0 {
 			this.Refs[i] *= -1
@@ -724,16 +654,16 @@ func NewPopulatedRelation(r randyStorage, easy bool) *Relation {
 		this.Id *= -1
 	}
 	if r.Intn(10) != 0 {
-		v4 := r.Intn(5)
-		this.Tags = make([]*TagEntry, v4)
-		for i := 0; i < v4; i++ {
+		v2 := r.Intn(5)
+		this.Tags = make([]*TagEntry, v2)
+		for i := 0; i < v2; i++ {
 			this.Tags[i] = NewPopulatedTagEntry(r, easy)
 		}
 	}
 	if r.Intn(10) != 0 {
-		v5 := r.Intn(5)
-		this.Members = make([]*MemberEntry, v5)
-		for i := 0; i < v5; i++ {
+		v3 := r.Intn(5)
+		this.Members = make([]*MemberEntry, v3)
+		for i := 0; i < v3; i++ {
 			this.Members[i] = NewPopulatedMemberEntry(r, easy)
 		}
 	}
@@ -748,9 +678,9 @@ func NewPopulatedGeometry(r randyStorage, easy bool) *Geometry {
 	if r.Intn(2) == 0 {
 		this.Id *= -1
 	}
-	v6 := r.Intn(100)
-	this.Geojson = make([]byte, v6)
-	for i := 0; i < v6; i++ {
+	v4 := r.Intn(100)
+	this.Geojson = make([]byte, v4)
+	for i := 0; i < v4; i++ {
 		this.Geojson[i] = byte(r.Intn(256))
 	}
 	if !easy && r.Intn(10) != 0 {
@@ -777,9 +707,9 @@ func randUTF8RuneStorage(r randyStorage) rune {
 	return rune(ru + 61)
 }
 func randStringStorage(r randyStorage) string {
-	v7 := r.Intn(100)
-	tmps := make([]rune, v7)
-	for i := 0; i < v7; i++ {
+	v5 := r.Intn(100)
+	tmps := make([]rune, v5)
+	for i := 0; i < v5; i++ {
 		tmps[i] = randUTF8RuneStorage(r)
 	}
 	return string(tmps)
@@ -801,11 +731,11 @@ func randFieldStorage(data []byte, r randyStorage, fieldNumber int, wire int) []
 	switch wire {
 	case 0:
 		data = encodeVarintPopulateStorage(data, uint64(key))
-		v8 := r.Int63()
+		v6 := r.Int63()
 		if r.Intn(2) == 0 {
-			v8 *= -1
+			v6 *= -1
 		}
-		data = encodeVarintPopulateStorage(data, uint64(v8))
+		data = encodeVarintPopulateStorage(data, uint64(v6))
 	case 1:
 		data = encodeVarintPopulateStorage(data, uint64(key))
 		data = append(data, byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)), byte(r.Intn(256)))
@@ -850,12 +780,6 @@ func (m *Node) Size() (n int) {
 	if m.Id != 0 {
 		n += 1 + sozStorage(uint64(m.Id))
 	}
-	if len(m.Tags) > 0 {
-		for _, e := range m.Tags {
-			l = e.Size()
-			n += 1 + l + sovStorage(uint64(l))
-		}
-	}
 	if m.Lat != 0 {
 		n += 9
 	}
@@ -870,12 +794,6 @@ func (m *Way) Size() (n int) {
 	_ = l
 	if m.Id != 0 {
 		n += 1 + sozStorage(uint64(m.Id))
-	}
-	if len(m.Tags) > 0 {
-		for _, e := range m.Tags {
-			l = e.Size()
-			n += 1 + l + sovStorage(uint64(l))
-		}
 	}
 	if len(m.Refs) > 0 {
 		l = 0
@@ -1109,37 +1027,6 @@ func (m *Node) Unmarshal(data []byte) error {
 			v = (v >> 1) ^ uint64((int64(v&1)<<63)>>63)
 			m.Id = int64(v)
 		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Tags", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowStorage
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthStorage
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Tags = append(m.Tags, &TagEntry{})
-			if err := m.Tags[len(m.Tags)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 8:
 			if wireType != 1 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Lat", wireType)
 			}
@@ -1157,7 +1044,7 @@ func (m *Node) Unmarshal(data []byte) error {
 			v |= uint64(data[iNdEx-2]) << 48
 			v |= uint64(data[iNdEx-1]) << 56
 			m.Lat = float64(math.Float64frombits(v))
-		case 9:
+		case 3:
 			if wireType != 1 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Lon", wireType)
 			}
@@ -1247,37 +1134,6 @@ func (m *Way) Unmarshal(data []byte) error {
 			v = (v >> 1) ^ uint64((int64(v&1)<<63)>>63)
 			m.Id = int64(v)
 		case 2:
-			if wireType != 2 {
-				return fmt.Errorf("proto: wrong wireType = %d for field Tags", wireType)
-			}
-			var msglen int
-			for shift := uint(0); ; shift += 7 {
-				if shift >= 64 {
-					return ErrIntOverflowStorage
-				}
-				if iNdEx >= l {
-					return io.ErrUnexpectedEOF
-				}
-				b := data[iNdEx]
-				iNdEx++
-				msglen |= (int(b) & 0x7F) << shift
-				if b < 0x80 {
-					break
-				}
-			}
-			if msglen < 0 {
-				return ErrInvalidLengthStorage
-			}
-			postIndex := iNdEx + msglen
-			if postIndex > l {
-				return io.ErrUnexpectedEOF
-			}
-			m.Tags = append(m.Tags, &TagEntry{})
-			if err := m.Tags[len(m.Tags)-1].Unmarshal(data[iNdEx:postIndex]); err != nil {
-				return err
-			}
-			iNdEx = postIndex
-		case 8:
 			if wireType == 2 {
 				var packedLen int
 				for shift := uint(0); ; shift += 7 {
@@ -1562,7 +1418,7 @@ func (m *Relation) Unmarshal(data []byte) error {
 				return err
 			}
 			iNdEx = postIndex
-		case 8:
+		case 3:
 			if wireType != 2 {
 				return fmt.Errorf("proto: wrong wireType = %d for field Members", wireType)
 			}
@@ -1822,27 +1678,26 @@ var (
 )
 
 var fileDescriptorStorage = []byte{
-	// 338 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x9c, 0x51, 0x4d, 0x4a, 0xc3, 0x60,
-	0x10, 0x35, 0x4d, 0x6b, 0xd3, 0xa9, 0x3f, 0xe5, 0x43, 0x24, 0xb8, 0x28, 0x25, 0x6e, 0xba, 0xd0,
-	0x14, 0xaa, 0x27, 0x28, 0x14, 0x57, 0xba, 0xf8, 0x10, 0x5c, 0x4a, 0x62, 0xa7, 0x9f, 0xd5, 0x24,
-	0x53, 0x92, 0x54, 0xc8, 0x4d, 0x3c, 0x82, 0x47, 0x70, 0xe9, 0xd2, 0xa5, 0x47, 0xf0, 0xe7, 0x12,
-	0x2e, 0x9d, 0x4c, 0x5a, 0x10, 0x71, 0xd5, 0xc5, 0x83, 0xf7, 0xe6, 0x9b, 0x79, 0xf3, 0x26, 0x81,
-	0xed, 0x2c, 0xa7, 0x34, 0x30, 0xe8, 0xcf, 0x53, 0xca, 0x49, 0x35, 0x62, 0x9a, 0x60, 0x74, 0x70,
-	0x6c, 0x66, 0xf9, 0xed, 0x22, 0xf4, 0x6f, 0x28, 0x1e, 0x18, 0x32, 0x34, 0x90, 0xd7, 0x70, 0x31,
-	0x15, 0x25, 0x42, 0x58, 0x35, 0xe5, 0x0d, 0xc1, 0xb9, 0x0c, 0xcc, 0x38, 0xc9, 0xd3, 0x42, 0x75,
-	0xc0, 0xbe, 0xc7, 0xc2, 0xb5, 0x7a, 0x56, 0xbf, 0xa5, 0x4b, 0xaa, 0xf6, 0xa0, 0xf1, 0x10, 0x44,
-	0x0b, 0x74, 0x6b, 0x52, 0xab, 0x84, 0x77, 0x0d, 0xf5, 0x0b, 0xde, 0xa5, 0x76, 0xa0, 0x36, 0x9b,
-	0x48, 0xbb, 0xd2, 0xcc, 0xd4, 0x21, 0xd4, 0xf3, 0xc0, 0x64, 0xdc, 0x6c, 0xf7, 0xdb, 0xc3, 0x5d,
-	0x5f, 0x02, 0xf9, 0x2b, 0x7b, 0x2d, 0x8f, 0xe5, 0x92, 0x28, 0xc8, 0x5d, 0x87, 0xa7, 0x2c, 0x5d,
-	0x52, 0xa9, 0x50, 0xe2, 0xb6, 0x96, 0x15, 0x4a, 0x3c, 0x0d, 0xf6, 0x55, 0x50, 0xac, 0xe7, 0xbf,
-	0x0f, 0xf5, 0x14, 0xa7, 0x19, 0x2f, 0xb0, 0xfb, 0x6a, 0x54, 0xeb, 0x58, 0x5a, 0xb4, 0x37, 0x86,
-	0xf6, 0x39, 0xc6, 0x21, 0xa6, 0xd5, 0xad, 0x7f, 0xbd, 0x15, 0x7b, 0x17, 0xf3, 0xea, 0xd0, 0x86,
-	0x16, 0x5e, 0xd6, 0x52, 0x8a, 0xd0, 0xb5, 0xe5, 0x78, 0xe1, 0x5e, 0x0c, 0x8e, 0x46, 0x4e, 0x3d,
-	0xa3, 0x64, 0xbd, 0x7c, 0x47, 0xd0, 0x8c, 0x25, 0x47, 0x15, 0xb1, 0x3d, 0x54, 0xcb, 0xbe, 0x5f,
-	0xe9, 0xf4, 0xaa, 0xc5, 0x3b, 0x05, 0xe7, 0x0c, 0x29, 0xc6, 0xff, 0x22, 0xbb, 0xd0, 0x34, 0x48,
-	0x77, 0x19, 0x7f, 0xbb, 0x32, 0xf5, 0x96, 0x5e, 0xc9, 0x51, 0xef, 0xfb, 0xa3, 0x6b, 0x3d, 0x7d,
-	0x76, 0xad, 0x67, 0xc6, 0x0b, 0xe3, 0x95, 0xf1, 0xc6, 0x78, 0x67, 0x3c, 0x7e, 0x75, 0x37, 0xc2,
-	0x4d, 0xf9, 0xfb, 0x27, 0x3f, 0x01, 0x00, 0x00, 0xff, 0xff, 0x35, 0x3e, 0x56, 0xee, 0x44, 0x02,
-	0x00, 0x00,
+	// 334 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x09, 0x6e, 0x88, 0x02, 0xff, 0x6c, 0x51, 0xcd, 0x4a, 0xf3, 0x50,
+	0x10, 0xfd, 0xd2, 0xb4, 0x5f, 0xdb, 0xa9, 0x3f, 0xe5, 0x22, 0x12, 0x5c, 0x94, 0x12, 0x37, 0x5d,
+	0xd8, 0x14, 0xaa, 0x2b, 0x97, 0x85, 0xe2, 0x4a, 0x17, 0x17, 0xc1, 0x75, 0x62, 0xa7, 0xd7, 0x6a,
+	0x92, 0x29, 0x49, 0x2a, 0xe4, 0x4d, 0x7c, 0x04, 0x1f, 0xc1, 0xa5, 0x4b, 0x97, 0x3e, 0x82, 0x3f,
+	0x2f, 0xe1, 0xd2, 0xc9, 0xa4, 0x01, 0xb1, 0x2e, 0x06, 0xce, 0x99, 0x7b, 0xce, 0xcc, 0x61, 0x2e,
+	0x6c, 0xa7, 0x19, 0x25, 0xbe, 0x41, 0x6f, 0x99, 0x50, 0x46, 0xaa, 0x11, 0xd1, 0x0c, 0xc3, 0x83,
+	0xa1, 0x59, 0x64, 0x37, 0xab, 0xc0, 0xbb, 0xa6, 0x68, 0x64, 0xc8, 0xd0, 0x48, 0x5e, 0x83, 0xd5,
+	0x5c, 0x98, 0x10, 0x41, 0xa5, 0xcb, 0x1d, 0x43, 0xeb, 0xd2, 0x37, 0xd3, 0x38, 0x4b, 0x72, 0xd5,
+	0x05, 0xfb, 0x0e, 0x73, 0xc7, 0xea, 0x5b, 0x83, 0xb6, 0x2e, 0xa0, 0xda, 0x83, 0xc6, 0xbd, 0x1f,
+	0xae, 0xd0, 0xa9, 0x49, 0xaf, 0x24, 0xee, 0x29, 0xd4, 0x2f, 0x78, 0x97, 0xda, 0x81, 0xda, 0x62,
+	0x26, 0x72, 0xa5, 0x19, 0x15, 0xfe, 0xd0, 0xcf, 0x44, 0x6b, 0xe9, 0x02, 0x4a, 0x87, 0x62, 0xc7,
+	0x5e, 0x77, 0x28, 0x76, 0x87, 0x60, 0x5f, 0xf9, 0xf9, 0x86, 0x75, 0x1f, 0xea, 0x09, 0xce, 0x53,
+	0xf6, 0xda, 0x03, 0x35, 0xa9, 0x75, 0x2d, 0x2d, 0xdc, 0x9d, 0x42, 0xe7, 0x1c, 0xa3, 0x00, 0x93,
+	0x32, 0xe1, 0x6f, 0x9b, 0x82, 0x7a, 0x96, 0x2f, 0xcb, 0x78, 0x0d, 0x2d, 0xb8, 0xe8, 0x25, 0x14,
+	0xa2, 0x2c, 0x6d, 0x6b, 0xc1, 0x6e, 0x04, 0x2d, 0x8d, 0x1c, 0x68, 0x41, 0xf1, 0xc6, 0x8c, 0x43,
+	0x9e, 0xe1, 0x9b, 0x72, 0x75, 0x67, 0xbc, 0xeb, 0xc9, 0x19, 0xbd, 0xea, 0x28, 0x5a, 0x1e, 0xd5,
+	0x11, 0x34, 0x23, 0xc9, 0x91, 0xf2, 0xdc, 0x42, 0xa7, 0xd6, 0xba, 0x1f, 0xe9, 0x74, 0x25, 0x71,
+	0x4f, 0xa0, 0x75, 0x86, 0x14, 0xe1, 0x5f, 0x91, 0x1d, 0x68, 0x1a, 0xa4, 0xdb, 0x94, 0xcf, 0x52,
+	0xa4, 0xde, 0xd2, 0x15, 0x9d, 0xf4, 0xbf, 0xde, 0x7b, 0xd6, 0xe3, 0x47, 0xcf, 0x7a, 0xe2, 0x7a,
+	0xe6, 0x7a, 0xe1, 0x7a, 0xe5, 0x7a, 0xe3, 0x7a, 0xf8, 0xec, 0xfd, 0x0b, 0xfe, 0xcb, 0x9f, 0x1d,
+	0x7f, 0x07, 0x00, 0x00, 0xff, 0xff, 0x5b, 0x87, 0x1a, 0xf3, 0xfa, 0x01, 0x00, 0x00,
 }

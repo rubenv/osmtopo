@@ -19,42 +19,18 @@ func AcceptTag(k, v string) bool {
 }
 
 func NodeFromEl(el element.Node) *model.Node {
-	node := &model.Node{
+	return &model.Node{
 		Id:  el.Id,
 		Lat: el.Lat,
 		Lon: el.Long,
 	}
-	tags := []*model.TagEntry{}
-	for k, v := range el.Tags {
-		if !AcceptTag(k, v) {
-			continue
-		}
-		tags = append(tags, &model.TagEntry{
-			Key:   k,
-			Value: v,
-		})
-	}
-	node.Tags = tags
-	return node
 }
 
 func WayFromEl(el element.Way) *model.Way {
-	way := &model.Way{
+	return &model.Way{
 		Id:   el.Id,
 		Refs: el.Refs,
 	}
-	tags := []*model.TagEntry{}
-	for k, v := range el.Tags {
-		if !AcceptTag(k, v) {
-			continue
-		}
-		tags = append(tags, &model.TagEntry{
-			Key:   k,
-			Value: v,
-		})
-	}
-	way.Tags = tags
-	return way
 }
 
 func RelationFromEl(n element.Relation) *model.Relation {
