@@ -78,7 +78,7 @@ func (s *Store) addNewNodes(arr []model.Node) error {
 		if err != nil {
 			return err
 		}
-		wb.Put([]byte(fmt.Sprintf("node/%d", n.Id)), data)
+		wb.Put(nodeKey(n.Id), data)
 	}
 	return s.db.Write(s.wo, wb)
 }
@@ -86,7 +86,7 @@ func (s *Store) addNewNodes(arr []model.Node) error {
 func (s *Store) removeNode(n *model.Node) error {
 	wb := gorocksdb.NewWriteBatch()
 	defer wb.Destroy()
-	wb.Delete([]byte(fmt.Sprintf("node/%d", n.Id)))
+	wb.Delete(nodeKey(n.Id))
 	return s.db.Write(s.wo, wb)
 }
 
@@ -98,7 +98,7 @@ func (s *Store) addNewWays(arr []model.Way) error {
 		if err != nil {
 			return err
 		}
-		wb.Put([]byte(fmt.Sprintf("way/%d", n.Id)), data)
+		wb.Put(wayKey(n.Id), data)
 	}
 	return s.db.Write(s.wo, wb)
 }
@@ -106,7 +106,7 @@ func (s *Store) addNewWays(arr []model.Way) error {
 func (s *Store) removeWay(n *model.Way) error {
 	wb := gorocksdb.NewWriteBatch()
 	defer wb.Destroy()
-	wb.Delete([]byte(fmt.Sprintf("way/%d", n.Id)))
+	wb.Delete(wayKey(n.Id))
 	return s.db.Write(s.wo, wb)
 }
 
@@ -118,7 +118,7 @@ func (s *Store) addNewRelations(arr []model.Relation) error {
 		if err != nil {
 			return err
 		}
-		wb.Put([]byte(fmt.Sprintf("relation/%d", n.Id)), data)
+		wb.Put(relationKey(n.Id), data)
 	}
 	return s.db.Write(s.wo, wb)
 }
@@ -126,7 +126,7 @@ func (s *Store) addNewRelations(arr []model.Relation) error {
 func (s *Store) removeRelation(n *model.Relation) error {
 	wb := gorocksdb.NewWriteBatch()
 	defer wb.Destroy()
-	wb.Delete([]byte(fmt.Sprintf("relation/%d", n.Id)))
+	wb.Delete(relationKey(n.Id))
 	return s.db.Write(s.wo, wb)
 }
 
@@ -165,7 +165,7 @@ func (s *Store) removeGeometries(prefix string) error {
 }
 
 func (s *Store) GetNode(id int64) (*model.Node, error) {
-	n, err := s.db.Get(s.ro, []byte(fmt.Sprintf("node/%d", id)))
+	n, err := s.db.Get(s.ro, nodeKey(id))
 	if err != nil {
 		return nil, err
 	}
@@ -185,7 +185,7 @@ func (s *Store) GetNode(id int64) (*model.Node, error) {
 }
 
 func (s *Store) GetWay(id int64) (*model.Way, error) {
-	n, err := s.db.Get(s.ro, []byte(fmt.Sprintf("way/%d", id)))
+	n, err := s.db.Get(s.ro, wayKey(id))
 	if err != nil {
 		return nil, err
 	}
@@ -205,7 +205,7 @@ func (s *Store) GetWay(id int64) (*model.Way, error) {
 }
 
 func (s *Store) GetRelation(id int64) (*model.Relation, error) {
-	n, err := s.db.Get(s.ro, []byte(fmt.Sprintf("relation/%d", id)))
+	n, err := s.db.Get(s.ro, relationKey(id))
 	if err != nil {
 		return nil, err
 	}
