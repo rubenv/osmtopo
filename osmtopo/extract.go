@@ -223,11 +223,11 @@ func (e *Extractor) extractLayers(layers []*ConfigLayer, depth int) error {
 
 	// Build a topology for simplification
 	topo = topojson.NewTopology(fc, &topojson.TopologyOptions{
-		PreQuantize:  0,
-		PostQuantize: 1e5,
+		PostQuantize: 1e6,
 		Simplify:     maxErr,
 		IDProperty:   "id",
 	})
+	fc = nil
 
 	log.Printf("Outputting\n")
 	bar = pb.StartNew(len(outputs))
