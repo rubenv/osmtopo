@@ -46,46 +46,6 @@ func (e *Extractor) Run() error {
 		return err
 	}
 
-	// Load water geometries
-	log.Println("Loading water geometries")
-	keys, err := e.store.GetGeometries("water")
-	if err != nil {
-		return err
-	}
-
-	if len(keys) == 0 {
-		return errors.New("No water found, did you forget to import first?")
-	}
-
-	clipGeos := make([]*ClipGeometry, 0, len(keys))
-	bar := pb.StartNew(len(keys))
-	for _, key := range keys {
-		f, err := e.store.GetGeometry("water", key)
-		if err != nil {
-			return err
-		}
-
-		geometry := &geojson.Geometry{}
-		err = json.Unmarshal(f.Geojson, geometry)
-		if err != nil {
-			return err
-		}
-
-		geom, err := GeometryToGeos(geometry)
-		if err != nil {
-			return err
-		}
-
-		clipGeos = append(clipGeos, &ClipGeometry{
-			Geometry: geom,
-			Prepared: geom.Prepare(),
-		})
-
-		bar.Increment()
-	}
-	e.clipGeos = clipGeos
-	bar.Finish()
-
 	e.config.Layer.Output = toplevelName
 	return e.extractLayers([]*ConfigLayer{e.config.Layer}, 0)
 }
@@ -96,6 +56,12 @@ func (e *Extractor) extractLayers(layers []*ConfigLayer, depth int) error {
 	}
 
 	outputs := make(map[string]*LayerOutput)
+
+	// Maximum error for use during simplification
+	maxErr := float64(0)
+	if len(e.config.Simplify) > depth {
+		maxErr = math.Pow(10, float64(-e.config.Simplify[depth]))
+	}
 
 	// Collect geometries
 	geometries := 0
@@ -119,7 +85,16 @@ func (e *Extractor) extractLayers(layers []*ConfigLayer, depth int) error {
 		geometries++
 	}
 
+	if geometries == 0 {
+		return e.processChildLayers(layers, depth)
+	}
+
 	log.Printf("Processing at level %d, %d geometries, %d outputs\n", depth, geometries, len(outputs))
+
+	err := e.loadWater(maxErr)
+	if err != nil {
+		return err
+	}
 
 	properties := make(map[int64]map[string]string)
 
@@ -167,19 +142,7 @@ func (e *Extractor) extractLayers(layers []*ConfigLayer, depth int) error {
 	}
 	bar.Finish()
 
-	log.Printf("Clipping\n")
-	bar = pb.StartNew(geometries * len(e.clipGeos))
-	for _, output := range outputs {
-		err := e.ClipLayer(e.clipGeos, output, bar)
-		if err != nil {
-			return err
-		}
-	}
-	bar.Finish()
-
-	// Build one big feature collection for simplification
-	log.Printf("Simplifying\n")
-
+	log.Printf("Pre-simplifying\n")
 	fc := geojson.NewFeatureCollection()
 	for _, output := range outputs {
 		for _, item := range output.Geometries {
@@ -202,11 +165,64 @@ func (e *Extractor) extractLayers(layers []*ConfigLayer, depth int) error {
 	}
 
 	// Build a topology for simplification
-	maxErr := float64(0)
-	if len(e.config.Simplify) > depth {
-		maxErr = math.Pow(10, float64(-e.config.Simplify[depth]))
-	}
 	topo := topojson.NewTopology(fc, &topojson.TopologyOptions{
+		Simplify:   maxErr,
+		IDProperty: "id",
+	})
+	fc = topo.ToGeoJSON()
+	topo = nil
+	for _, output := range outputs {
+		for _, item := range output.Geometries {
+			id := fmt.Sprintf("%d", item.ID)
+			for _, feat := range fc.Features {
+				if id == feat.ID {
+					geom, err := GeometryToGeos(feat.Geometry)
+					if err != nil {
+						return err
+					}
+
+					item.Geometry = geom
+				}
+			}
+		}
+	}
+	fc = nil
+
+	log.Printf("Clipping\n")
+	bar = pb.StartNew(geometries * len(e.clipGeos))
+	for _, output := range outputs {
+		err := e.ClipLayer(e.clipGeos, output, bar)
+		if err != nil {
+			return err
+		}
+	}
+	bar.Finish()
+
+	// Build one big feature collection for simplification
+	log.Printf("Simplifying\n")
+	fc = geojson.NewFeatureCollection()
+	for _, output := range outputs {
+		for _, item := range output.Geometries {
+			g, err := GeometryFromGeos(item.Geometry)
+			if err != nil {
+				return err
+			}
+
+			out := geojson.NewFeature(g)
+			out.SetProperty("id", fmt.Sprintf("%d", item.ID))
+			for k, v := range properties[item.ID] {
+				out.SetProperty(k, v)
+			}
+
+			fc.AddFeature(out)
+
+			// No longer needed, we still have the ID as a reference
+			item.Geometry = nil
+		}
+	}
+
+	// Build a topology for simplification
+	topo = topojson.NewTopology(fc, &topojson.TopologyOptions{
 		PreQuantize:  0,
 		PostQuantize: 1e5,
 		Simplify:     maxErr,
@@ -230,6 +246,10 @@ func (e *Extractor) extractLayers(layers []*ConfigLayer, depth int) error {
 
 	log.Printf("Processing at level %d: DONE\n", depth)
 
+	return e.processChildLayers(layers, depth)
+}
+
+func (e *Extractor) processChildLayers(layers []*ConfigLayer, depth int) error {
 	// Process the child layers
 	childLayers := make([]*ConfigLayer, 0)
 	for _, layer := range layers {
@@ -328,5 +348,68 @@ func (e *Extractor) StoreOutput(output *LayerOutput, topo *topojson.Topology) er
 		return err
 	}
 
+	return nil
+}
+
+func (e *Extractor) loadWater(maxErr float64) error {
+	// Load water geometries
+	log.Println("Loading water geometries")
+	keys, err := e.store.GetGeometries("water")
+	if err != nil {
+		return err
+	}
+
+	if len(keys) == 0 {
+		return errors.New("No water found, did you forget to import first?")
+	}
+
+	bar := pb.StartNew(len(keys))
+	defer bar.Finish()
+
+	fc := geojson.NewFeatureCollection()
+	clipGeos := make([]*ClipGeometry, 0, len(keys))
+	for _, key := range keys {
+		f, err := e.store.GetGeometry("water", key)
+		if err != nil {
+			return err
+		}
+
+		geometry := &geojson.Geometry{}
+		err = json.Unmarshal(f.Geojson, geometry)
+		if err != nil {
+			return err
+		}
+
+		out := geojson.NewFeature(geometry)
+		out.SetProperty("id", fmt.Sprintf("%d", key))
+
+		fc.AddFeature(out)
+		bar.Increment()
+	}
+
+	topo := topojson.NewTopology(fc, &topojson.TopologyOptions{
+		Simplify:   maxErr,
+		IDProperty: "id",
+	})
+	fc = topo.ToGeoJSON()
+
+	for _, feat := range fc.Features {
+		geom, err := GeometryToGeos(feat.Geometry)
+		if err != nil {
+			return err
+		}
+
+		geom, err = geom.Buffer(0)
+		if err != nil {
+			return err
+		}
+
+		clipGeos = append(clipGeos, &ClipGeometry{
+			Geometry: geom,
+			Prepared: geom.Prepare(),
+		})
+	}
+
+	e.clipGeos = clipGeos
 	return nil
 }
