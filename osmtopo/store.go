@@ -70,7 +70,7 @@ func (s *Store) Import(file string) error {
 	return i.Run()
 }
 
-func (s *Store) addNewNodes(arr []*model.Node) error {
+func (s *Store) addNewNodes(arr []model.Node) error {
 	wb := gorocksdb.NewWriteBatch()
 	defer wb.Destroy()
 	for _, n := range arr {
@@ -90,7 +90,7 @@ func (s *Store) removeNode(n *model.Node) error {
 	return s.db.Write(s.wo, wb)
 }
 
-func (s *Store) addNewWays(arr []*model.Way) error {
+func (s *Store) addNewWays(arr []model.Way) error {
 	wb := gorocksdb.NewWriteBatch()
 	defer wb.Destroy()
 	for _, n := range arr {
@@ -110,7 +110,7 @@ func (s *Store) removeWay(n *model.Way) error {
 	return s.db.Write(s.wo, wb)
 }
 
-func (s *Store) addNewRelations(arr []*model.Relation) error {
+func (s *Store) addNewRelations(arr []model.Relation) error {
 	wb := gorocksdb.NewWriteBatch()
 	defer wb.Destroy()
 	for _, n := range arr {

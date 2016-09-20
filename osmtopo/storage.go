@@ -18,23 +18,23 @@ func AcceptTag(k, v string) bool {
 	return false
 }
 
-func NodeFromEl(el element.Node) *model.Node {
-	return &model.Node{
+func NodeFromEl(el element.Node) model.Node {
+	return model.Node{
 		Id:  el.Id,
 		Lat: el.Lat,
 		Lon: el.Long,
 	}
 }
 
-func WayFromEl(el element.Way) *model.Way {
-	return &model.Way{
+func WayFromEl(el element.Way) model.Way {
+	return model.Way{
 		Id:   el.Id,
 		Refs: el.Refs,
 	}
 }
 
-func RelationFromEl(n element.Relation) *model.Relation {
-	rel := &model.Relation{
+func RelationFromEl(n element.Relation) model.Relation {
+	rel := model.Relation{
 		Id: n.Id,
 	}
 	tags := []*model.TagEntry{}

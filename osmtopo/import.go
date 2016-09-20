@@ -173,7 +173,7 @@ func (i *Import) importNodes() {
 	coordChan := i.coords
 	el := []element.Node{}
 
-	nodes := []*model.Node{}
+	nodes := []model.Node{}
 	batchSize := 2500000
 
 	for nodeChan != nil || coordChan != nil {
@@ -209,7 +209,7 @@ func (i *Import) importNodes() {
 				i.err = err
 			}
 			i.nodeCount += int64(len(nodes))
-			nodes = []*model.Node{}
+			nodes = []model.Node{}
 		}
 	}
 
@@ -236,7 +236,7 @@ func (i *Import) discardWays() {
 func (i *Import) importWays() {
 	defer i.wg.Done()
 
-	ways := []*model.Way{}
+	ways := []model.Way{}
 	batchSize := 100000
 
 	for {
@@ -266,7 +266,7 @@ func (i *Import) importWays() {
 				i.err = err
 			}
 			i.wayCount += int64(len(ways))
-			ways = []*model.Way{}
+			ways = []model.Way{}
 		}
 	}
 
@@ -293,7 +293,7 @@ func (i *Import) discardRelations() {
 func (i *Import) importRelations() {
 	defer i.wg.Done()
 
-	rels := []*model.Relation{}
+	rels := []model.Relation{}
 	batchSize := 10000
 
 	for {
@@ -329,7 +329,7 @@ func (i *Import) importRelations() {
 				i.err = err
 			}
 			i.relationCount += int64(len(rels))
-			rels = []*model.Relation{}
+			rels = []model.Relation{}
 		}
 	}
 
