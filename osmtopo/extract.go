@@ -123,6 +123,7 @@ func (e *Extractor) extractLayers(layers []*ConfigLayer, depth int) error {
 
 	properties := make(map[int64]map[string]string)
 
+	log.Printf("Loading\n")
 	bar := pb.StartNew(geometries)
 	for _, output := range outputs {
 		for _, item := range output.Geometries {
@@ -163,8 +164,13 @@ func (e *Extractor) extractLayers(layers []*ConfigLayer, depth int) error {
 
 			bar.Increment()
 		}
+	}
+	bar.Finish()
 
-		err := e.ClipLayer(e.clipGeos, output)
+	log.Printf("Clipping\n")
+	bar = pb.StartNew(geometries * len(e.clipGeos))
+	for _, output := range outputs {
+		err := e.ClipLayer(e.clipGeos, output, bar)
 		if err != nil {
 			return err
 		}
@@ -245,7 +251,7 @@ type ClipGeometry struct {
 	Prepared *geos.PGeometry
 }
 
-func (e *Extractor) ClipLayer(clipGeos []*ClipGeometry, output *LayerOutput) error {
+func (e *Extractor) ClipLayer(clipGeos []*ClipGeometry, output *LayerOutput, bar *pb.ProgressBar) error {
 	// Clip each extracted geometry with the water geometries
 	for _, feature := range output.Geometries {
 		for _, clipGeom := range clipGeos {
@@ -263,6 +269,8 @@ func (e *Extractor) ClipLayer(clipGeos []*ClipGeometry, output *LayerOutput) err
 					log.Println(err)
 				}
 			}
+
+			bar.Increment()
 		}
 	}
 
