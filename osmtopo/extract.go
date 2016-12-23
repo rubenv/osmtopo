@@ -354,62 +354,10 @@ func (e *Extractor) StoreOutput(output *LayerOutput, topo *topojson.Topology) er
 func (e *Extractor) loadWater(maxErr float64) error {
 	// Load water geometries
 	log.Println("Loading water geometries")
-	keys, err := e.store.GetGeometries("water")
+	g, err := loadWaterClipGeos(maxErr, e.store, true)
 	if err != nil {
 		return err
 	}
-
-	if len(keys) == 0 {
-		return errors.New("No water found, did you forget to import first?")
-	}
-
-	bar := pb.StartNew(len(keys))
-	defer bar.Finish()
-
-	fc := geojson.NewFeatureCollection()
-	clipGeos := make([]*ClipGeometry, 0, len(keys))
-	for _, key := range keys {
-		f, err := e.store.GetGeometry("water", key)
-		if err != nil {
-			return err
-		}
-
-		geometry := &geojson.Geometry{}
-		err = json.Unmarshal(f.Geojson, geometry)
-		if err != nil {
-			return err
-		}
-
-		out := geojson.NewFeature(geometry)
-		out.SetProperty("id", fmt.Sprintf("%d", key))
-
-		fc.AddFeature(out)
-		bar.Increment()
-	}
-
-	topo := topojson.NewTopology(fc, &topojson.TopologyOptions{
-		Simplify:   maxErr,
-		IDProperty: "id",
-	})
-	fc = topo.ToGeoJSON()
-
-	for _, feat := range fc.Features {
-		geom, err := GeometryToGeos(feat.Geometry)
-		if err != nil {
-			return err
-		}
-
-		geom, err = geom.Buffer(0)
-		if err != nil {
-			return err
-		}
-
-		clipGeos = append(clipGeos, &ClipGeometry{
-			Geometry: geom,
-			Prepared: geom.Prepare(),
-		})
-	}
-
-	e.clipGeos = clipGeos
+	e.clipGeos = g
 	return nil
 }

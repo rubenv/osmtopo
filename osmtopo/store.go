@@ -7,6 +7,7 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/kr/pretty"
 	"github.com/rubenv/osmtopo/osmtopo/model"
 	"github.com/tecbot/gorocksdb"
 )
@@ -312,4 +313,14 @@ func (s *Store) SetConfig(key, value string) error {
 	defer wb.Destroy()
 	wb.Put([]byte(fmt.Sprintf("config/%s", key)), []byte(value))
 	return s.db.Write(s.wo, wb)
+}
+
+func (s *Store) Resolve(configPath string, lat, lon float64) ([]ResolvedCoordinate, error) {
+	config, err := ParseConfig(configPath)
+	if err != nil {
+		return nil, err
+	}
+	pretty.Log(config)
+
+	return nil, nil
 }
