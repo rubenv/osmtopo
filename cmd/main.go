@@ -1,9 +1,11 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/jessevdk/go-flags"
+	"github.com/rubenv/osmtopo/osmtopo"
 )
 
 type GlobalOptions struct {
@@ -24,16 +26,15 @@ func Run() error {
 	return err
 }
 
-/*
-func (g *GlobalOptions) OpenStore() (*osmtopo.Store, error) {
-	if g.DataStore == "" {
-		return nil, errors.New("No datastore specified")
+func (g *GlobalOptions) NewEnv() (*osmtopo.Env, error) {
+	config, err := osmtopo.ReadConfig(g.Config)
+	if err != nil {
+		return nil, err
 	}
 
-	store, err := osmtopo.NewStore(g.DataStore)
+	env, err := osmtopo.NewEnv(config, g.Topologies, g.DataStore)
 	if err != nil {
-		return nil, fmt.Errorf("Failed to open store: %s\n", err.Error())
+		return nil, fmt.Errorf("Failed to create env: %s\n", err.Error())
 	}
-	return store, nil
+	return env, nil
 }
-*/
