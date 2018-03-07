@@ -7,7 +7,6 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/kr/pretty"
 	"github.com/rubenv/osmtopo/osmtopo/model"
 	"github.com/tecbot/gorocksdb"
 )
@@ -315,6 +314,7 @@ func (s *Store) SetConfig(key, value string) error {
 	return s.db.Write(s.wo, wb)
 }
 
+/*
 func (s *Store) Resolve(configPath string, lat, lon float64) ([]ResolvedCoordinate, error) {
 	config, err := ParseConfig(configPath)
 	if err != nil {
@@ -324,3 +324,4 @@ func (s *Store) Resolve(configPath string, lat, lon float64) ([]ResolvedCoordina
 
 	return nil, nil
 }
+*/

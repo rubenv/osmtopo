@@ -136,14 +136,12 @@ func (i *Import) startParser() {
 		return
 	}
 
-	f, err := pbf.Open(i.Filename)
+	parser, err := pbf.NewParser(i.Filename)
 	if err != nil {
 		i.err = err
 		return
 	}
-
-	parser := pbf.NewParser(f, i.coords, i.nodes, i.ways, i.relations)
-	parser.Parse()
+	parser.Parse(i.coords, i.nodes, i.ways, i.relations)
 }
 
 func (i *Import) discardNodes() {
