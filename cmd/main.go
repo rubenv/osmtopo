@@ -1,16 +1,14 @@
 package cmd
 
 import (
-	"errors"
-	"fmt"
 	"os"
 
 	"github.com/jessevdk/go-flags"
-	"github.com/rubenv/osmtopo/osmtopo"
 )
 
 type GlobalOptions struct {
-	DataStore string `short:"d" long:"datastore" description:"Data store path (required)"`
+	DataStore string `short:"d" long:"datastore" description:"Data store path" required:"true"`
+	Config    string `short:"c" long:"config" description:"Config file path" required:"true"`
 }
 
 var globalOpts = GlobalOptions{}
@@ -25,6 +23,7 @@ func Run() error {
 	return err
 }
 
+/*
 func (g *GlobalOptions) OpenStore() (*osmtopo.Store, error) {
 	if g.DataStore == "" {
 		return nil, errors.New("No datastore specified")
@@ -36,3 +35,4 @@ func (g *GlobalOptions) OpenStore() (*osmtopo.Store, error) {
 	}
 	return store, nil
 }
+*/
