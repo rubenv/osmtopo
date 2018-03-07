@@ -1,0 +1,10 @@
+sources:
+    belgium:
+        seed: http://download.geofabrik.de/europe/belgium-latest.osm.pbf
+        update: http://download.geofabrik.de/europe/belgium-updates/
+    luxembourg:
+        seed: http://download.geofabrik.de/europe/luxembourg-latest.osm.pbf
+        update: http://download.geofabrik.de/europe/luxembourg-updates/
+    netherlands:
+        seed: http://download.geofabrik.de/europe/netherlands-latest.osm.pbf
+        update: http://download.geofabrik.de/europe/netherlands-updates/

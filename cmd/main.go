@@ -7,8 +7,9 @@ import (
 )
 
 type GlobalOptions struct {
-	DataStore string `short:"d" long:"datastore" description:"Data store path" required:"true"`
-	Config    string `short:"c" long:"config" description:"Config file path" required:"true"`
+	DataStore  string `short:"d" long:"datastore" description:"Data store path" required:"true"`
+	Config     string `short:"c" long:"config" description:"Config file path" required:"true"`
+	Topologies string `short:"t" long:"topologies" description:"Topologies mapping path" required:"true"`
 }
 
 var globalOpts = GlobalOptions{}
