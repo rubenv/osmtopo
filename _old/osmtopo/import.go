@@ -144,27 +144,6 @@ func (i *Import) startParser() {
 	parser.Parse(i.coords, i.nodes, i.ways, i.relations)
 }
 
-func (i *Import) discardNodes() {
-	defer i.wg.Done()
-	nodeChan := i.nodes
-	coordChan := i.coords
-
-	for nodeChan != nil || coordChan != nil {
-		select {
-		case _, ok := <-coordChan:
-			if !ok {
-				coordChan = nil
-				continue
-			}
-		case _, ok := <-nodeChan:
-			if !ok {
-				nodeChan = nil
-				continue
-			}
-		}
-	}
-}
-
 func (i *Import) importNodes() {
 	defer i.wg.Done()
 	nodeChan := i.nodes
@@ -220,17 +199,6 @@ func (i *Import) importNodes() {
 	}
 }
 
-func (i *Import) discardWays() {
-	defer i.wg.Done()
-
-	for {
-		_, ok := <-i.ways
-		if !ok {
-			break
-		}
-	}
-}
-
 func (i *Import) importWays() {
 	defer i.wg.Done()
 
@@ -274,17 +242,6 @@ func (i *Import) importWays() {
 			i.err = err
 		}
 		i.wayCount += int64(len(ways))
-	}
-}
-
-func (i *Import) discardRelations() {
-	defer i.wg.Done()
-
-	for {
-		_, ok := <-i.relations
-		if !ok {
-			break
-		}
 	}
 }
 

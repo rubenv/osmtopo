@@ -108,64 +108,11 @@ func (s *Store) removeWay(n *model.Way) error {
 	return s.db.Write(s.wo, wb)
 }
 
-func (s *Store) addNewRelations(arr []model.Relation) error {
-	wb := gorocksdb.NewWriteBatch()
-	defer wb.Destroy()
-	for _, n := range arr {
-		data, err := n.Marshal()
-		if err != nil {
-			return err
-		}
-		wb.Put(relationKey(n.Id), data)
-	}
-	return s.db.Write(s.wo, wb)
-}
-
 func (s *Store) removeRelation(n *model.Relation) error {
 	wb := gorocksdb.NewWriteBatch()
 	defer wb.Destroy()
 	wb.Delete(relationKey(n.Id))
 	return s.db.Write(s.wo, wb)
-}
-
-func (s *Store) GetNode(id int64) (*model.Node, error) {
-	n, err := s.db.Get(s.ro, nodeKey(id))
-	if err != nil {
-		return nil, err
-	}
-	defer n.Free()
-
-	if n.Size() == 0 {
-		return nil, nil
-	}
-
-	node := &model.Node{}
-	err = node.Unmarshal(n.Data())
-	if err != nil {
-		return nil, err
-	}
-
-	return node, nil
-}
-
-func (s *Store) GetWay(id int64) (*model.Way, error) {
-	n, err := s.db.Get(s.ro, wayKey(id))
-	if err != nil {
-		return nil, err
-	}
-	defer n.Free()
-
-	if n.Size() == 0 {
-		return nil, nil
-	}
-
-	way := &model.Way{}
-	err = way.Unmarshal(n.Data())
-	if err != nil {
-		return nil, err
-	}
-
-	return way, nil
 }
 
 func (s *Store) GetRelation(id int64) (*model.Relation, error) {

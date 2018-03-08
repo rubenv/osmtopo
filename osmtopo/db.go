@@ -86,6 +86,21 @@ func (e *Env) shouldRun(stamp string, every int64) (bool, error) {
 	return !nextRun.After(time.Now()), nil
 }
 
+func (e *Env) getFlag(flag string) (bool, error) {
+	key := fmt.Sprintf("flag/%s", flag)
+	n, err := e.db.Get(e.ro, []byte(key))
+	if err != nil {
+		return false, err
+	}
+	defer n.Free()
+
+	if n.Size() == 0 {
+		return false, nil
+	}
+
+	return string(n.Data()) == "1", nil
+}
+
 func (e *Env) removeGeometries(prefix string) error {
 	keys, err := e.GetGeometries(prefix)
 	if err != nil {
@@ -148,4 +163,57 @@ func (e *Env) addNewGeometries(prefix string, arr []*model.Geometry) error {
 		wb.Put([]byte(key), data)
 	}
 	return e.db.Write(e.wo, wb)
+}
+
+func (e *Env) addNewRelations(arr []model.Relation) error {
+	wb := gorocksdb.NewWriteBatch()
+	defer wb.Destroy()
+	for _, n := range arr {
+		data, err := n.Marshal()
+		if err != nil {
+			return err
+		}
+		wb.Put(relationKey(n.Id), data)
+	}
+	return e.db.Write(e.wo, wb)
+}
+
+func (e *Env) GetNode(id int64) (*model.Node, error) {
+	n, err := e.db.Get(e.ro, nodeKey(id))
+	if err != nil {
+		return nil, err
+	}
+	defer n.Free()
+
+	if n.Size() == 0 {
+		return nil, nil
+	}
+
+	node := &model.Node{}
+	err = node.Unmarshal(n.Data())
+	if err != nil {
+		return nil, err
+	}
+
+	return node, nil
+}
+
+func (e *Env) GetWay(id int64) (*model.Way, error) {
+	n, err := e.db.Get(e.ro, wayKey(id))
+	if err != nil {
+		return nil, err
+	}
+	defer n.Free()
+
+	if n.Size() == 0 {
+		return nil, nil
+	}
+
+	way := &model.Way{}
+	err = way.Unmarshal(n.Data())
+	if err != nil {
+		return nil, err
+	}
+
+	return way, nil
 }

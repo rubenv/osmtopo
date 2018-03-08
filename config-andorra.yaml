@@ -1,0 +1,12 @@
+sources:
+    andorra:
+        seed: http://download.geofabrik.de/europe/andorra-latest.osm.pbf
+        update: http://download.geofabrik.de/europe/andorra-updates/
+
+layers:
+    - id: districts
+      name: Districts
+      admin_levels: [4]
+    - id: cities
+      name: Cities
+      admin_levels: [8]

@@ -36,8 +36,6 @@ func (e *Env) updateWater() error {
 	}
 	defer os.RemoveAll(tmp)
 
-	e.log("water", "tmp: %s", tmp)
-
 	err = e.downloadWater(tmp, "water.zip")
 	if err != nil {
 		return err

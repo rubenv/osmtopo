@@ -60,12 +60,12 @@ func RelationFromEl(n element.Relation) model.Relation {
 	return rel
 }
 
-func ToGeometry(r *model.Relation, s *Store) (*geos.Geometry, error) {
+func ToGeometry(r *model.Relation, e *Env) (*geos.Geometry, error) {
 	outerParts := [][]int64{}
 	innerParts := [][]int64{}
 	for _, m := range r.GetMembers() {
 		if m.Type == 1 && m.Role == "outer" {
-			way, err := s.GetWay(m.Id)
+			way, err := e.GetWay(m.Id)
 			if err != nil {
 				return nil, err
 			}
@@ -78,7 +78,7 @@ func ToGeometry(r *model.Relation, s *Store) (*geos.Geometry, error) {
 		}
 
 		if m.Type == 1 && m.Role == "inner" {
-			way, err := s.GetWay(m.Id)
+			way, err := e.GetWay(m.Id)
 			if err != nil {
 				return nil, err
 			}
@@ -90,11 +90,11 @@ func ToGeometry(r *model.Relation, s *Store) (*geos.Geometry, error) {
 	outerParts = simplify.Reduce(outerParts)
 	innerParts = simplify.Reduce(innerParts)
 
-	outerPolys, err := toGeom(s, outerParts)
+	outerPolys, err := toGeom(e, outerParts)
 	if err != nil {
 		return nil, err
 	}
-	innerPolys, err := toGeom(s, innerParts)
+	innerPolys, err := toGeom(e, innerParts)
 	if err != nil {
 		return nil, err
 	}
@@ -102,10 +102,10 @@ func ToGeometry(r *model.Relation, s *Store) (*geos.Geometry, error) {
 	return MakePolygons(outerPolys, innerPolys)
 }
 
-func toGeom(store *Store, coords [][]int64) ([]*geos.Geometry, error) {
+func toGeom(env *Env, coords [][]int64) ([]*geos.Geometry, error) {
 	linestrings := make([]*geos.Geometry, len(coords))
 	for i, v := range coords {
-		ls, err := expandPoly(store, v)
+		ls, err := expandPoly(env, v)
 		if err != nil {
 			return nil, err
 		}
@@ -115,10 +115,10 @@ func toGeom(store *Store, coords [][]int64) ([]*geos.Geometry, error) {
 	return linestrings, nil
 }
 
-func expandPoly(store *Store, coords []int64) (*geos.Geometry, error) {
+func expandPoly(env *Env, coords []int64) (*geos.Geometry, error) {
 	points := make([]geos.Coord, len(coords))
 	for i, c := range coords {
-		node, err := store.GetNode(c)
+		node, err := env.GetNode(c)
 		if err != nil {
 			return nil, err
 		}

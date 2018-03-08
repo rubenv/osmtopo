@@ -109,5 +109,12 @@ func (e *Env) updateData() error {
 		return err
 	}
 
+	for name, source := range e.config.Sources {
+		err := e.updateSource(name, source)
+		if err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
