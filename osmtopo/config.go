@@ -3,11 +3,13 @@ package osmtopo
 import (
 	"io"
 	"os"
+	"time"
 
 	yaml "gopkg.in/yaml.v2"
 )
 
 const DefaultWaterPolygons = "http://data.openstreetmapdata.com/water-polygons-split-4326.zip"
+const DefaultWaterUpdate = 24 * 7 * time.Hour
 
 type Config struct {
 	// Where to download water polygons
@@ -21,6 +23,14 @@ type Config struct {
 
 	// Output layers
 	Layers []Layer `yaml:"layers"`
+
+	// **** Bits below usually don't need to be set ****
+
+	// Don't update data sources
+	NoUpdate bool `yaml:"no_update"`
+
+	// Update interval in seconds, defaults to 1 week
+	UpdateWaterEvery int64 `yaml:"update_water_every"`
 }
 
 type PBFSource struct {
@@ -56,6 +66,7 @@ func ParseConfig(in io.Reader) (*Config, error) {
 
 func NewConfig() *Config {
 	return &Config{
-		Water: DefaultWaterPolygons,
+		Water:            DefaultWaterPolygons,
+		UpdateWaterEvery: int64(DefaultWaterUpdate.Seconds()),
 	}
 }

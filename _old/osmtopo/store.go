@@ -3,8 +3,6 @@ package osmtopo
 import (
 	"fmt"
 	"os"
-	"strconv"
-	"strings"
 	"syscall"
 
 	"github.com/rubenv/osmtopo/osmtopo/model"
@@ -130,40 +128,6 @@ func (s *Store) removeRelation(n *model.Relation) error {
 	return s.db.Write(s.wo, wb)
 }
 
-func (s *Store) addNewGeometries(prefix string, arr []*model.Geometry) error {
-	wb := gorocksdb.NewWriteBatch()
-	defer wb.Destroy()
-	for _, n := range arr {
-		data, err := n.Marshal()
-		if err != nil {
-			return err
-		}
-		key := fmt.Sprintf("geometry/%s/%d", prefix, n.Id)
-		wb.Put([]byte(key), data)
-	}
-	return s.db.Write(s.wo, wb)
-}
-
-func (s *Store) removeGeometries(prefix string) error {
-	keys, err := s.GetGeometries(prefix)
-	if err != nil {
-		return err
-	}
-	if len(keys) == 0 {
-		return nil
-	}
-
-	wb := gorocksdb.NewWriteBatch()
-	defer wb.Destroy()
-
-	for _, k := range keys {
-		key := fmt.Sprintf("geometry/%s/%d", prefix, k)
-		wb.Delete([]byte(key))
-	}
-
-	return s.db.Write(s.wo, wb)
-}
-
 func (s *Store) GetNode(id int64) (*model.Node, error) {
 	n, err := s.db.Get(s.ro, nodeKey(id))
 	if err != nil {
@@ -242,36 +206,6 @@ func (s *Store) GetGeometry(prefix string, id int64) (*model.Geometry, error) {
 	}
 
 	return rel, nil
-}
-
-func (s *Store) GetGeometries(prefix string) ([]int64, error) {
-	ro := gorocksdb.NewDefaultReadOptions()
-	ro.SetFillCache(false)
-
-	it := s.db.NewIterator(ro)
-	defer it.Close()
-
-	result := make([]int64, 0)
-	keyPrefix := fmt.Sprintf("geometry/%s/", prefix)
-	it.Seek([]byte(keyPrefix))
-	for it = it; it.Valid(); it.Next() {
-		key := it.Key()
-		k := key.Data()
-		if !strings.HasPrefix(string(k), keyPrefix) {
-			key.Free()
-			break
-		}
-
-		key.Free()
-
-		id, err := strconv.ParseInt(string(k[len(keyPrefix):]), 10, 64)
-		if err != nil {
-			return nil, err
-		}
-		result = append(result, id)
-	}
-
-	return result, nil
 }
 
 func (s *Store) Extract(configPath, outPath string) error {

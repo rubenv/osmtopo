@@ -2,11 +2,10 @@ package osmtopo
 
 import (
 	"context"
+	"fmt"
+	"log"
 	"net/http"
-	"os"
-	"path"
 	"sync"
-	"syscall"
 	"time"
 
 	"github.com/tecbot/gorocksdb"
@@ -40,42 +39,13 @@ func NewEnv(config *Config, topologiesFile, storePath string) (*Env, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	if !config.NoUpdate {
+		env.done.Add(1)
+		go env.runUpdater()
+	}
+
 	return env, nil
-}
-
-func (e *Env) openStore() error {
-	// Determine max number of open files
-	var rLimit syscall.Rlimit
-	err := syscall.Getrlimit(syscall.RLIMIT_NOFILE, &rLimit)
-	if err != nil {
-		return err
-	}
-	maxOpen := int(rLimit.Cur - 100)
-
-	storeFolder := path.Join(e.storePath, "ldb")
-	err = os.MkdirAll(storeFolder, 0755)
-	if err != nil {
-		return err
-	}
-
-	opts := gorocksdb.NewDefaultOptions()
-	bb := gorocksdb.NewDefaultBlockBasedTableOptions()
-	bb.SetBlockCache(gorocksdb.NewLRUCache(3 << 30))
-	bb.SetFilterPolicy(gorocksdb.NewBloomFilter(10))
-	opts.SetCreateIfMissing(true)
-	opts.SetBlockBasedTableFactory(bb)
-	opts.SetMaxOpenFiles(maxOpen)
-	opts.SetMaxBackgroundCompactions(1)
-	db, err := gorocksdb.OpenDb(opts, storeFolder)
-	if err != nil {
-		return err
-	}
-	e.db = db
-
-	e.wo = gorocksdb.NewDefaultWriteOptions()
-	e.ro = gorocksdb.NewDefaultReadOptions()
-	e.ro.SetFillCache(false)
-	return nil
 }
 
 func (e *Env) Stop() {
@@ -107,4 +77,37 @@ func (e *Env) StartServer(listen string) error {
 		err = nil
 	}
 	return err
+}
+
+func (e *Env) runUpdater() {
+	defer e.done.Done()
+
+	done := e.ctx.Done()
+	for {
+		nextRun := time.Now().Add(1 * time.Hour)
+
+		err := e.updateData()
+		if err != nil {
+			e.log("updater", "Failed: %s", err)
+		}
+
+		select {
+		case <-time.After(time.Until(nextRun)):
+		case <-done:
+			return
+		}
+	}
+}
+
+func (e *Env) log(section, str string, args ...interface{}) {
+	log.Printf(fmt.Sprintf("[%s] %s", section, str), args...)
+}
+
+func (e *Env) updateData() error {
+	err := e.updateWater()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

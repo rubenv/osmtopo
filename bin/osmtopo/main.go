@@ -3,7 +3,7 @@ package main
 import (
 	"log"
 
-	"github.com/rubenv/osmtopo/cmd"
+	"github.com/rubenv/osmtopo/bin/osmtopo/cmd"
 )
 
 func main() {
