@@ -25,7 +25,7 @@ func (e *Env) updateSource(name string, source PBFSource) error {
 		return err
 	}
 
-	tmp, err := ioutil.TempDir("", "water")
+	tmp, err := ioutil.TempDir("", fmt.Sprintf("source-%s", name))
 	if err != nil {
 		return err
 	}
@@ -36,10 +36,14 @@ func (e *Env) updateSource(name string, source PBFSource) error {
 		if err != nil {
 			return err
 		}
+
+		err = e.setFlag(flag, true)
+		if err != nil {
+			return err
+		}
 	}
 
 	e.log(fmt.Sprintf("source/%s", name), "Done")
-	// TODO: set flag
 	return nil
 }
 

@@ -101,6 +101,18 @@ func (e *Env) getFlag(flag string) (bool, error) {
 	return string(n.Data()) == "1", nil
 }
 
+func (e *Env) setFlag(flag string, v bool) error {
+	key := fmt.Sprintf("flag/%s", flag)
+	wb := gorocksdb.NewWriteBatch()
+	defer wb.Destroy()
+	if v {
+		wb.Put([]byte(key), []byte("1"))
+	} else {
+		wb.Put([]byte(key), []byte("0"))
+	}
+	return e.db.Write(e.wo, wb)
+}
+
 func (e *Env) removeGeometries(prefix string) error {
 	keys, err := e.GetGeometries(prefix)
 	if err != nil {
@@ -161,6 +173,32 @@ func (e *Env) addNewGeometries(prefix string, arr []*model.Geometry) error {
 		}
 		key := fmt.Sprintf("geometry/%s/%d", prefix, n.Id)
 		wb.Put([]byte(key), data)
+	}
+	return e.db.Write(e.wo, wb)
+}
+
+func (e *Env) addNewNodes(arr []model.Node) error {
+	wb := gorocksdb.NewWriteBatch()
+	defer wb.Destroy()
+	for _, n := range arr {
+		data, err := n.Marshal()
+		if err != nil {
+			return err
+		}
+		wb.Put(nodeKey(n.Id), data)
+	}
+	return e.db.Write(e.wo, wb)
+}
+
+func (e *Env) addNewWays(arr []model.Way) error {
+	wb := gorocksdb.NewWriteBatch()
+	defer wb.Destroy()
+	for _, n := range arr {
+		data, err := n.Marshal()
+		if err != nil {
+			return err
+		}
+		wb.Put(wayKey(n.Id), data)
 	}
 	return e.db.Write(e.wo, wb)
 }

@@ -2,8 +2,6 @@ package osmtopo
 
 import (
 	"fmt"
-	"os"
-	"syscall"
 
 	"github.com/rubenv/osmtopo/osmtopo/model"
 	"github.com/tecbot/gorocksdb"
@@ -17,87 +15,10 @@ type Store struct {
 	ro *gorocksdb.ReadOptions
 }
 
-func NewStore(path string) (*Store, error) {
-	// Determine max number of open files
-	var rLimit syscall.Rlimit
-	err := syscall.Getrlimit(syscall.RLIMIT_NOFILE, &rLimit)
-	if err != nil {
-		return nil, err
-	}
-	maxOpen := int(rLimit.Cur - 100)
-
-	err = os.MkdirAll(path+"/ldb", 0755)
-	if err != nil {
-		return nil, err
-	}
-
-	store := &Store{
-		path: path,
-	}
-
-	opts := gorocksdb.NewDefaultOptions()
-	bb := gorocksdb.NewDefaultBlockBasedTableOptions()
-	bb.SetBlockCache(gorocksdb.NewLRUCache(3 << 30))
-	bb.SetFilterPolicy(gorocksdb.NewBloomFilter(10))
-	opts.SetCreateIfMissing(true)
-	opts.SetBlockBasedTableFactory(bb)
-	opts.SetMaxOpenFiles(maxOpen)
-	opts.SetMaxBackgroundCompactions(1)
-	db, err := gorocksdb.OpenDb(opts, path+"/ldb")
-	if err != nil {
-		return nil, err
-	}
-	store.db = db
-
-	store.wo = gorocksdb.NewDefaultWriteOptions()
-	store.ro = gorocksdb.NewDefaultReadOptions()
-	store.ro.SetFillCache(false)
-
-	return store, nil
-}
-
-func (s *Store) Close() {
-	s.db.Close()
-}
-
-func (s *Store) Import(file string) error {
-	i := Import{
-		Store:    s,
-		Filename: file,
-	}
-	return i.Run()
-}
-
-func (s *Store) addNewNodes(arr []model.Node) error {
-	wb := gorocksdb.NewWriteBatch()
-	defer wb.Destroy()
-	for _, n := range arr {
-		data, err := n.Marshal()
-		if err != nil {
-			return err
-		}
-		wb.Put(nodeKey(n.Id), data)
-	}
-	return s.db.Write(s.wo, wb)
-}
-
 func (s *Store) removeNode(n *model.Node) error {
 	wb := gorocksdb.NewWriteBatch()
 	defer wb.Destroy()
 	wb.Delete(nodeKey(n.Id))
-	return s.db.Write(s.wo, wb)
-}
-
-func (s *Store) addNewWays(arr []model.Way) error {
-	wb := gorocksdb.NewWriteBatch()
-	defer wb.Destroy()
-	for _, n := range arr {
-		data, err := n.Marshal()
-		if err != nil {
-			return err
-		}
-		wb.Put(wayKey(n.Id), data)
-	}
 	return s.db.Write(s.wo, wb)
 }
 
