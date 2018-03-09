@@ -1,32 +1,39 @@
 .PHONY: all base dev binaries container push
 
+IMG=docker.io/rubenv/osmtopo
+
 all: container
 
 base: Dockerfile-base
 	rm -rf tmp/
 	mkdir -p tmp/
 	cp Dockerfile-base tmp/Dockerfile
-	docker pull rubenv/osmtopo-base
-	docker build --pull -t rubenv/osmtopo-base tmp/
+	docker pull $(IMG)-base
+	docker build --pull -t $(IMG)-base tmp/
 
 dev: base Dockerfile-dev
 	rm -rf tmp/
 	mkdir -p tmp/
 	cp Dockerfile-dev tmp/Dockerfile
-	docker pull rubenv/osmtopo-dev
-	docker build -t rubenv/osmtopo-dev tmp/
+	docker pull $(IMG)-dev
+	docker build -t $(IMG)-dev tmp/
 
 binaries: base dev
 	rm -rf tmp/
 	mkdir -p tmp/
-	docker run -ti --rm -v $(GOPATH)/src:/go/src rubenv/osmtopo-dev bash -c "go get -v -t -d ./... && go install -x -v github.com/rubenv/osmtopo/osmtopo && go build -v -o tmp/osmtopo ./bin/osmtopo && go test -bench=. -benchmem -cover github.com/rubenv/osmtopo/..."
+	docker run -ti --rm -v $(GOPATH)/src:/go/src $(IMG)-dev bash -c "go get -v -t -d ./... && go install -x -v github.com/rubenv/osmtopo/osmtopo && go build -v -o tmp/osmtopo ./bin/osmtopo && go test -bench=. -benchmem -cover github.com/rubenv/osmtopo/..."
 
 container: binaries
 	cp Dockerfile-binaries tmp/Dockerfile
-	docker build -t rubenv/osmtopo tmp/
-	docker run -ti --rm rubenv/osmtopo osmtopo --help
+	docker build -t $(IMG) tmp/
+	docker run -ti --rm $(IMG) osmtopo --help
+
+pull:
+	docker pull $(IMG)-base
+	docker pull $(IMG)-dev
+	docker pull $(IMG)
 
 push:
-	docker push rubenv/osmtopo-base
-	docker push rubenv/osmtopo-dev
-	docker push rubenv/osmtopo
+	docker push $(IMG)-base
+	docker push $(IMG)-dev
+	docker push $(IMG)

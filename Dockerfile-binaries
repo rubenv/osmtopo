@@ -1,4 +1,4 @@
-FROM rubenv/osmtopo-base
+FROM docker.io/rubenv/osmtopo-base
 
 ADD osmtopo /usr/local/bin/
 
