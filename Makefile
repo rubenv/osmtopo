@@ -14,7 +14,7 @@ dev: base Dockerfile-dev
 	mkdir -p tmp/
 	cp Dockerfile-dev tmp/Dockerfile
 	docker pull rubenv/osmtopo-dev
-	docker build --pull -t rubenv/osmtopo-dev tmp/
+	docker build -t rubenv/osmtopo-dev tmp/
 
 binaries: base dev
 	rm -rf tmp/
@@ -23,7 +23,7 @@ binaries: base dev
 
 container: binaries
 	cp Dockerfile-binaries tmp/Dockerfile
-	docker build --pull -t rubenv/osmtopo tmp/
+	docker build -t rubenv/osmtopo tmp/
 	docker run -ti --rm rubenv/osmtopo osmtopo --help
 
 push:
