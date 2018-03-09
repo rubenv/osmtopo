@@ -21,7 +21,7 @@ dev: base Dockerfile-dev
 binaries: base dev
 	rm -rf tmp/
 	mkdir -p tmp/
-	docker run -ti --rm -v $(GOPATH)/src:/go/src $(IMG)-dev bash -c "go get -v -t -d ./... && go install -x -v github.com/rubenv/osmtopo/osmtopo && go build -v -o tmp/osmtopo ./bin/osmtopo && go test -bench=. -benchmem -cover github.com/rubenv/osmtopo/..."
+	docker run -ti --rm -v $(GOPATH)/src:/go/src:Z $(IMG)-dev bash -c "go get -v -t -d ./... && go install -x -v github.com/rubenv/osmtopo/osmtopo && go build -v -o tmp/osmtopo ./bin/osmtopo && go test -bench=. -benchmem -cover github.com/rubenv/osmtopo/..."
 
 container: binaries
 	cp Dockerfile-binaries tmp/Dockerfile

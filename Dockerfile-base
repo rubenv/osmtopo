@@ -8,9 +8,9 @@ RUN dnf -y install geos-devel zlib bzip2 snappy libstdc++-devel && \
     tar xzpf rocksdb.tar.gz && \
     rm rocksdb.tar.gz && \
     cd rocksdb-* && \
-    make -j 4 shared_lib && \
+    make -j 8 shared_lib && \
     make install-shared && \
     cd / && \
     rm -rf /tmp/build && \
-    dnf -y remove make which perl findutils gcc-c++ && \
+    dnf -y remove make which perl findutils && \
     dnf clean all
