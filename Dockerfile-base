@@ -1,4 +1,16 @@
 FROM fedora:27
 
-RUN dnf -y install geos-devel zlib-devel bzip2-devel gcc-c++ findutils && \
+RUN dnf -y install geos-devel gcc-c++ findutils zlib bzip2 && \
+    dnf -y install make zlib-devel bzip2-devel which perl && \
+    mkdir -p /tmp/build && \
+    cd /tmp/build && \
+    curl -L -o rocksdb.tar.gz https://github.com/facebook/rocksdb/archive/master.tar.gz && \
+    tar xzpf rocksdb.tar.gz && \
+    rm rocksdb.tar.gz && \
+    cd rocksdb-* && \
+    make -j 4 shared_lib && \
+    make install-shared && \
+    cd / && \
+    rm -rf /tmp/build && \
+    dnf -y remove make zlib-devel bzip2-devel which perl && \
     dnf clean all
