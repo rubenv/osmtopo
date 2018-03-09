@@ -6,7 +6,7 @@ services:
 script:
     - mkdir -p $HOME/go/src/github.com/rubenv/
     - mv $TRAVIS_BUILD_DIR $HOME/go/src/github.com/rubenv/
-    - docker login -e="$DOCKER_EMAIL" -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
+    - docker login -u="$DOCKER_USERNAME" -p="$DOCKER_PASSWORD"
     - export GOPATH=$HOME/go/
     - cd $HOME/go/src/github.com/rubenv/osmtopo
     - make all push
