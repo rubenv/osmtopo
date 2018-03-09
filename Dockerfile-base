@@ -1,6 +1,6 @@
 FROM fedora:27
 
-RUN dnf -y install geos-devel zlib bzip2 snappy && \
+RUN dnf -y install geos-devel zlib bzip2 snappy libstdc++ && \
     dnf -y install make which gcc-c++ perl findutils zlib-devel bzip2-devel snappy-devel && \
     mkdir -p /tmp/build && \
     cd /tmp/build && \
