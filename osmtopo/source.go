@@ -41,6 +41,11 @@ func (e *Env) updateSource(name string, source PBFSource) error {
 		if err != nil {
 			return err
 		}
+	} else {
+		err = e.updateDeltas(name, source, tmp)
+		if err != nil {
+			return err
+		}
 	}
 
 	e.log(fmt.Sprintf("source/%s", name), "Done")
@@ -57,7 +62,12 @@ func (e *Env) importPBF(name string, source PBFSource, folder string) error {
 	}
 
 	i := newImporter(e, name, path.Join(folder, filename))
-	return i.Run()
+	seq, err := i.Run()
+	if err != nil {
+		return err
+	}
+
+	return e.setInt(fmt.Sprintf("seq/%s", name), seq)
 }
 
 func (e *Env) downloadPBF(name, folder, filename, url string) error {
@@ -65,4 +75,23 @@ func (e *Env) downloadPBF(name, folder, filename, url string) error {
 	buf := make([]byte, 2*1024*1024)
 	_, err := ctxdownload.Download(e.ctx, url, folder, filename, buf, 24*3600)
 	return err
+}
+
+func (e *Env) updateDeltas(name string, source PBFSource, folder string) error {
+	seq, err := e.getInt(fmt.Sprintf("seq/%s", name))
+	if err != nil {
+		return err
+	}
+	e.log(fmt.Sprintf("source/%s", name), "Replicating from %d", seq)
+
+	current, err := fetchLatestSequence(source.Update)
+	if err != nil {
+		return err
+	}
+
+	for seq < current {
+		e.log(fmt.Sprintf("source/%s", name), "Replicating change %d", seq+1)
+		seq++
+	}
+	return nil
 }

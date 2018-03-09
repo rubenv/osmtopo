@@ -34,6 +34,7 @@ type importer struct {
 	nodeCount     *atomic.Int64
 	wayCount      *atomic.Int64
 	relationCount *atomic.Int64
+	seq           *atomic.Int64
 	phase         *atomic.String
 
 	nodesNeeded *needidx.NeedIdx
@@ -50,16 +51,17 @@ func newImporter(env *Env, name, filename string) *importer {
 		nodeCount:     atomic.NewInt64(0),
 		wayCount:      atomic.NewInt64(0),
 		relationCount: atomic.NewInt64(0),
+		seq:           atomic.NewInt64(0),
 		phase:         atomic.NewString(""),
 		progress:      make(chan interface{}),
 	}
 
 }
 
-func (i *importer) Run() error {
+func (i *importer) Run() (int64, error) {
 	_, err := os.Stat(i.filename)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	i.started = time.Now()
@@ -77,7 +79,7 @@ func (i *importer) Run() error {
 	g.Go(i.startParser)
 	err = g.Wait()
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	// Pass 2: Import ways
@@ -91,7 +93,7 @@ func (i *importer) Run() error {
 	g.Go(i.startParser)
 	err = g.Wait()
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	// Pass 2: Import nodes
@@ -105,20 +107,20 @@ func (i *importer) Run() error {
 	g.Go(i.startParser)
 	err = g.Wait()
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	close(i.progress)
 	i.pwg.Wait()
 
-	seconds := int64(time.Now().Sub(i.started).Seconds())
+	seconds := int64(time.Since(i.started).Seconds())
 	if seconds == 0 {
 		seconds = 1
 	}
 	elapsed := time.Duration(seconds) * time.Second
 	i.log("[N: %d (%d/s)] [W: %d (%d/s)] [R: %d (%d/s)] %s", i.nodeCount.Load(), i.nodeCount.Load()/seconds, i.wayCount.Load(), i.wayCount.Load()/seconds, i.relationCount.Load(), i.relationCount.Load()/seconds, elapsed)
 
-	return nil
+	return i.seq.Load(), nil
 }
 
 func (i *importer) log(str string, args ...interface{}) {
@@ -137,6 +139,14 @@ func (i *importer) startParser() error {
 	if err != nil {
 		return err
 	}
+
+	go func() {
+		<-i.ctx.Done()
+		parser.Stop()
+	}()
+
+	header := parser.Header()
+	i.seq.Store(header.Sequence)
 
 	parser.Parse(i.coords, i.nodes, i.ways, i.relations)
 
@@ -166,7 +176,7 @@ loop:
 		case <-time.After(time.Duration(every) * time.Second):
 		}
 
-		executing := time.Now().Sub(i.started)
+		executing := time.Since(i.started)
 		newNodes := i.nodeCount.Load() - prevNodeCount
 		newWays := i.wayCount.Load() - prevWayCount
 		newRelations := i.relationCount.Load() - prevRelationCount
