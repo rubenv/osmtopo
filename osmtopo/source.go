@@ -56,6 +56,9 @@ func (e *Env) updateSource(name string, source PBFSource) error {
 }
 
 func (e *Env) importPBF(name string, source PBFSource, folder string) error {
+	if source.Seed == "" {
+		return fmt.Errorf("Missing seed URL for source %s", name)
+	}
 	e.log(fmt.Sprintf("source/%s", name), "Importing PBF")
 
 	filename := fmt.Sprintf("%s.pbf", name)
@@ -82,6 +85,9 @@ func (e *Env) downloadPBF(name, folder, filename, url string) error {
 }
 
 func (e *Env) updateDeltas(name string, source PBFSource, folder string) error {
+	if source.Seed == "" {
+		return fmt.Errorf("Missing update URL for source %s", name)
+	}
 	key := fmt.Sprintf("seq/%s", name)
 	seq, err := e.getInt(key)
 	if err != nil {
