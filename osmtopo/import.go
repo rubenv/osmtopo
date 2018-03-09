@@ -222,13 +222,13 @@ func (i *importer) importNodes() error {
 	nodeChan := i.nodes
 	coordChan := i.coords
 
-	arr := []element.Node{}
 	nodes := []model.Node{}
 	batchSize := 2500000
 
 	done := i.ctx.Done()
 loop:
 	for nodeChan != nil || coordChan != nil {
+		var arr []element.Node
 		select {
 		case a, ok := <-coordChan:
 			if !ok {
@@ -275,13 +275,13 @@ loop:
 }
 
 func (i *importer) importWays() error {
-	arr := []element.Way{}
 	ways := []model.Way{}
 	batchSize := 100000
 
 	done := i.ctx.Done()
 loop:
 	for {
+		var arr []element.Way
 		select {
 		case a, ok := <-i.ways:
 			if !ok {
@@ -326,13 +326,13 @@ loop:
 }
 
 func (i *importer) importRelations() error {
-	arr := []element.Relation{}
 	rels := []model.Relation{}
 	batchSize := 10000
 
 	done := i.ctx.Done()
 loop:
 	for {
+		var arr []element.Relation
 		select {
 		case a, ok := <-i.relations:
 			if !ok {

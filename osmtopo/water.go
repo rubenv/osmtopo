@@ -130,12 +130,7 @@ func (e *Env) importWater(filename, folder string) error {
 	}
 
 	e.log("water", "Storing %d geometries", len(geometries))
-	err = e.addNewGeometries("water", geometries)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return e.addNewGeometries("water", geometries)
 }
 
 func (e *Env) processWaterPolygon(id int64, poly *shp.Polygon) (*model.Geometry, error) {

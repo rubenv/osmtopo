@@ -257,3 +257,15 @@ func relationKey(id int64) []byte {
 	binary.BigEndian.PutUint64(buf[9:], uint64(id))
 	return buf
 }
+
+func stampKey(stamp string) []byte {
+	return []byte(fmt.Sprintf("stamp/%s", stamp))
+}
+
+func flagKey(flag string) []byte {
+	return []byte(fmt.Sprintf("flag/%s", flag))
+}
+
+func intKey(nbr string) []byte {
+	return []byte(fmt.Sprintf("int/%s", nbr))
+}

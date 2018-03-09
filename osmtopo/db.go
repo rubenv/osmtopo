@@ -49,8 +49,8 @@ func (e *Env) openStore() error {
 }
 
 func (e *Env) getTimestamp(stamp string) (time.Time, error) {
-	key := fmt.Sprintf("stamp/%s", stamp)
-	n, err := e.db.Get(e.ro, []byte(key))
+	key := stampKey(stamp)
+	n, err := e.db.Get(e.ro, key)
 	if err != nil {
 		return time.Time{}, err
 	}
@@ -68,11 +68,11 @@ func (e *Env) getTimestamp(stamp string) (time.Time, error) {
 }
 
 func (e *Env) setTimestamp(stamp string, ts time.Time) error {
-	key := fmt.Sprintf("stamp/%s", stamp)
+	key := stampKey(stamp)
 	t := ts.Format(time.RFC3339)
 	wb := gorocksdb.NewWriteBatch()
 	defer wb.Destroy()
-	wb.Put([]byte(key), []byte(t))
+	wb.Put(key, []byte(t))
 	return e.db.Write(e.wo, wb)
 }
 
@@ -87,8 +87,8 @@ func (e *Env) shouldRun(stamp string, every int64) (bool, error) {
 }
 
 func (e *Env) getFlag(flag string) (bool, error) {
-	key := fmt.Sprintf("flag/%s", flag)
-	n, err := e.db.Get(e.ro, []byte(key))
+	key := flagKey(flag)
+	n, err := e.db.Get(e.ro, key)
 	if err != nil {
 		return false, err
 	}
@@ -102,14 +102,41 @@ func (e *Env) getFlag(flag string) (bool, error) {
 }
 
 func (e *Env) setFlag(flag string, v bool) error {
-	key := fmt.Sprintf("flag/%s", flag)
+	key := flagKey(flag)
 	wb := gorocksdb.NewWriteBatch()
 	defer wb.Destroy()
 	if v {
-		wb.Put([]byte(key), []byte("1"))
+		wb.Put(key, []byte("1"))
 	} else {
-		wb.Put([]byte(key), []byte("0"))
+		wb.Put(key, []byte("0"))
 	}
+	return e.db.Write(e.wo, wb)
+}
+
+func (e *Env) getInt(nbr string) (int64, error) {
+	key := intKey(nbr)
+	n, err := e.db.Get(e.ro, key)
+	if err != nil {
+		return 0, err
+	}
+	defer n.Free()
+
+	if n.Size() == 0 {
+		return 0, nil
+	}
+
+	v, err := strconv.ParseInt(string(n.Data()), 10, 64)
+	if err != nil {
+		return 0, err
+	}
+	return v, nil
+}
+
+func (e *Env) setInt(nbr string, v int64) error {
+	key := intKey(nbr)
+	wb := gorocksdb.NewWriteBatch()
+	defer wb.Destroy()
+	wb.Put(key, []byte(fmt.Sprintf("%d", v)))
 	return e.db.Write(e.wo, wb)
 }
 
@@ -143,7 +170,7 @@ func (e *Env) GetGeometries(prefix string) ([]int64, error) {
 	result := make([]int64, 0)
 	keyPrefix := fmt.Sprintf("geometry/%s/", prefix)
 	it.Seek([]byte(keyPrefix))
-	for it = it; it.Valid(); it.Next() {
+	for it.Valid() {
 		key := it.Key()
 		k := key.Data()
 		if !strings.HasPrefix(string(k), keyPrefix) {
@@ -158,6 +185,7 @@ func (e *Env) GetGeometries(prefix string) ([]int64, error) {
 			return nil, err
 		}
 		result = append(result, id)
+		it.Next()
 	}
 
 	return result, nil
