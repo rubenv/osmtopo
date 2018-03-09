@@ -155,7 +155,7 @@ func (i *importer) startParser() error {
 	close(i.ways)
 	close(i.relations)
 
-	return nil
+	return i.ctx.Err()
 }
 
 func (i *importer) updateProgress() {
