@@ -11,6 +11,12 @@ import (
 	"github.com/rubenv/osmtopo/simplify"
 )
 
+func AcceptRelation(r model.Relation) bool {
+	admin, _ := r.GetTag("admin_level")
+	natural, _ := r.GetTag("natural")
+	return admin != "" || natural == "water"
+}
+
 func AcceptTag(k, v string) bool {
 	if k == "admin_level" || k == "name" || strings.HasPrefix(k, "name:") {
 		return true

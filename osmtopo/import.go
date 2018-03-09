@@ -361,10 +361,7 @@ loop:
 			}
 
 			r := RelationFromEl(n)
-			admin, _ := r.GetTag("admin_level")
-			natural, _ := r.GetTag("natural")
-			accepted := admin != "" || natural == "water"
-			if !accepted {
+			if !AcceptRelation(r) {
 				continue
 			}
 

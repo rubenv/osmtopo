@@ -1,12 +1,16 @@
 package osmtopo
 
 import (
+	"compress/gzip"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path"
 
 	"github.com/northbright/ctx/ctxdownload"
+	"github.com/omniscale/imposm3/parser/diff"
+	"github.com/rubenv/osmtopo/osmtopo/model"
 )
 
 func (e *Env) updateSource(name string, source PBFSource) error {
@@ -48,7 +52,6 @@ func (e *Env) updateSource(name string, source PBFSource) error {
 		}
 	}
 
-	e.log(fmt.Sprintf("source/%s", name), "Done")
 	return nil
 }
 
@@ -67,6 +70,7 @@ func (e *Env) importPBF(name string, source PBFSource, folder string) error {
 		return err
 	}
 
+	e.log(fmt.Sprintf("source/%s", name), "Done")
 	return e.setInt(fmt.Sprintf("seq/%s", name), seq)
 }
 
@@ -78,20 +82,127 @@ func (e *Env) downloadPBF(name, folder, filename, url string) error {
 }
 
 func (e *Env) updateDeltas(name string, source PBFSource, folder string) error {
-	seq, err := e.getInt(fmt.Sprintf("seq/%s", name))
+	key := fmt.Sprintf("seq/%s", name)
+	seq, err := e.getInt(key)
 	if err != nil {
 		return err
 	}
-	e.log(fmt.Sprintf("source/%s", name), "Replicating from %d", seq)
 
 	current, err := fetchLatestSequence(source.Update)
 	if err != nil {
 		return err
 	}
+	if seq == current {
+		return nil
+	}
 
+	e.log(fmt.Sprintf("source/%s", name), "Replicating from %d -> %d", seq, current)
 	for seq < current {
-		e.log(fmt.Sprintf("source/%s", name), "Replicating change %d", seq+1)
+		err = e.applyDelta(name, source, folder, seq)
+		if err != nil {
+			return err
+		}
 		seq++
 	}
-	return nil
+
+	return e.setInt(key, seq)
+}
+
+func (e *Env) applyDelta(name string, source PBFSource, folder string, seq int64) error {
+	e.log(fmt.Sprintf("source/%s", name), "Replicating change %d", seq+1)
+	filename, err := fetchChangeset(e.ctx, source.Update, seq, folder)
+	if err != nil {
+		return err
+	}
+
+	fp, err := os.Open(filename)
+	if err != nil {
+		return err
+	}
+	defer fp.Close()
+
+	reader, err := gzip.NewReader(fp)
+	if err != nil {
+		return err
+	}
+	defer reader.Close()
+
+	parser := diff.NewParser(reader)
+	newNodes := make([]model.Node, 0)
+	newWays := make([]model.Way, 0)
+	newRelations := make([]model.Relation, 0)
+	for e.ctx.Err() == nil {
+		elem, err := parser.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return err
+		}
+
+		switch {
+		case elem.Del:
+			if elem.Node != nil {
+				n := NodeFromEl(*elem.Node)
+				err = e.removeNode(n)
+				if err != nil {
+					return err
+				}
+			}
+			if elem.Way != nil {
+				w := WayFromEl(*elem.Way)
+				err = e.removeWay(w)
+				if err != nil {
+					return err
+				}
+			}
+			if elem.Rel != nil {
+				r := RelationFromEl(*elem.Rel)
+				err = e.removeRelation(r)
+				if err != nil {
+					return err
+				}
+			}
+		case elem.Add:
+			fallthrough
+		case elem.Mod:
+			if elem.Node != nil {
+				n := NodeFromEl(*elem.Node)
+				newNodes = append(newNodes, n)
+			}
+			if elem.Way != nil {
+				w := WayFromEl(*elem.Way)
+				newWays = append(newWays, w)
+			}
+			if elem.Rel != nil {
+				r := RelationFromEl(*elem.Rel)
+				if AcceptRelation(r) {
+					newRelations = append(newRelations, r)
+				}
+			}
+		}
+	}
+
+	// TODO: be smarter about which ways and nodes we accept
+
+	if len(newNodes) > 0 {
+		err = e.addNewNodes(newNodes)
+		if err != nil {
+			return err
+		}
+	}
+	if len(newWays) > 0 {
+		err = e.addNewWays(newWays)
+		if err != nil {
+			return err
+		}
+	}
+	if len(newRelations) > 0 {
+		err = e.addNewRelations(newRelations)
+		if err != nil {
+			return err
+		}
+	}
+
+	return e.ctx.Err()
 }

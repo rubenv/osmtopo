@@ -244,6 +244,27 @@ func (e *Env) addNewRelations(arr []model.Relation) error {
 	return e.db.Write(e.wo, wb)
 }
 
+func (e *Env) removeNode(n model.Node) error {
+	wb := gorocksdb.NewWriteBatch()
+	defer wb.Destroy()
+	wb.Delete(nodeKey(n.Id))
+	return e.db.Write(e.wo, wb)
+}
+
+func (e *Env) removeWay(n model.Way) error {
+	wb := gorocksdb.NewWriteBatch()
+	defer wb.Destroy()
+	wb.Delete(wayKey(n.Id))
+	return e.db.Write(e.wo, wb)
+}
+
+func (e *Env) removeRelation(n model.Relation) error {
+	wb := gorocksdb.NewWriteBatch()
+	defer wb.Destroy()
+	wb.Delete(relationKey(n.Id))
+	return e.db.Write(e.wo, wb)
+}
+
 func (e *Env) GetNode(id int64) (*model.Node, error) {
 	n, err := e.db.Get(e.ro, nodeKey(id))
 	if err != nil {

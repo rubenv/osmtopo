@@ -15,27 +15,6 @@ type Store struct {
 	ro *gorocksdb.ReadOptions
 }
 
-func (s *Store) removeNode(n *model.Node) error {
-	wb := gorocksdb.NewWriteBatch()
-	defer wb.Destroy()
-	wb.Delete(nodeKey(n.Id))
-	return s.db.Write(s.wo, wb)
-}
-
-func (s *Store) removeWay(n *model.Way) error {
-	wb := gorocksdb.NewWriteBatch()
-	defer wb.Destroy()
-	wb.Delete(wayKey(n.Id))
-	return s.db.Write(s.wo, wb)
-}
-
-func (s *Store) removeRelation(n *model.Relation) error {
-	wb := gorocksdb.NewWriteBatch()
-	defer wb.Destroy()
-	wb.Delete(relationKey(n.Id))
-	return s.db.Write(s.wo, wb)
-}
-
 func (s *Store) GetRelation(id int64) (*model.Relation, error) {
 	n, err := s.db.Get(s.ro, relationKey(id))
 	if err != nil {
@@ -89,14 +68,6 @@ func (s *Store) Extract(configPath, outPath string) error {
 	}
 
 	return extractor.Run()
-}
-
-func (s *Store) Water() *Water {
-	return &Water{store: s}
-}
-
-func (s *Store) Replicate(planet_file string) error {
-	return Replicate(s, planet_file)
 }
 
 func (s *Store) GetConfig(key string) (string, error) {
