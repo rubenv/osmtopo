@@ -142,7 +142,8 @@ func (i *importer) startParser() error {
 
 	go func() {
 		<-i.ctx.Done()
-		parser.Stop()
+		// TODO: Disabled until https://github.com/omniscale/imposm3/pull/162 is merged
+		//parser.Stop()
 	}()
 
 	header := parser.Header()
