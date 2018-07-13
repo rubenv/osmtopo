@@ -2,6 +2,7 @@ package osmtopo
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -20,11 +21,17 @@ type Env struct {
 	config         *Config
 	topologiesFile string
 	storePath      string
-	frontend       http.Handler
 
 	db *gorocksdb.DB
 	wo *gorocksdb.WriteOptions
 	ro *gorocksdb.ReadOptions
+
+	updateStatus UpdateStatus
+}
+
+type UpdateStatus struct {
+	Running     bool `json:"running"`
+	Initialized bool `json:"initialized"`
 }
 
 func NewEnv(config *Config, topologiesFile, storePath string) (*Env, error) {
@@ -36,7 +43,6 @@ func NewEnv(config *Config, topologiesFile, storePath string) (*Env, error) {
 		config:         config,
 		topologiesFile: topologiesFile,
 		storePath:      storePath,
-		frontend:       http.FileServer(packr.NewBox("../frontend/build")),
 	}
 	err := env.openStore()
 	if err != nil {
@@ -61,9 +67,13 @@ func (e *Env) StartServer(listen string) error {
 	e.done.Add(1)
 	defer e.done.Done()
 
+	mux := http.NewServeMux()
+	mux.Handle("/api/status", http.HandlerFunc(e.handleStatus))
+	mux.Handle("/", http.FileServer(packr.NewBox("../frontend/build")))
+
 	s := &http.Server{
 		Addr:           listen,
-		Handler:        e,
+		Handler:        mux,
 		ReadTimeout:    60 * time.Second,
 		WriteTimeout:   60 * time.Second,
 		MaxHeaderBytes: 1 << 20,
@@ -87,12 +97,17 @@ func (e *Env) runUpdater() {
 
 	done := e.ctx.Done()
 	for {
+		e.updateStatus.Running = true
 		nextRun := time.Now().Add(1 * time.Hour)
 
 		err := e.updateData()
 		if err != nil {
 			e.log("updater", "Failed: %s", err)
+		} else {
+			e.updateStatus.Initialized = true
 		}
+
+		e.updateStatus.Running = false
 
 		select {
 		case <-time.After(time.Until(nextRun)):
@@ -122,6 +137,7 @@ func (e *Env) updateData() error {
 	return nil
 }
 
-func (e *Env) ServeHTTP(w http.ResponseWriter, req *http.Request) {
-	e.frontend.ServeHTTP(w, req)
+func (e *Env) handleStatus(w http.ResponseWriter, req *http.Request) {
+	req.Header.Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(e.updateStatus)
 }
