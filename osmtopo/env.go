@@ -8,6 +8,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/gobuffalo/packr"
 	"github.com/tecbot/gorocksdb"
 )
 
@@ -19,6 +20,7 @@ type Env struct {
 	config         *Config
 	topologiesFile string
 	storePath      string
+	frontend       http.Handler
 
 	db *gorocksdb.DB
 	wo *gorocksdb.WriteOptions
@@ -34,6 +36,7 @@ func NewEnv(config *Config, topologiesFile, storePath string) (*Env, error) {
 		config:         config,
 		topologiesFile: topologiesFile,
 		storePath:      storePath,
+		frontend:       http.FileServer(packr.NewBox("../frontend/build")),
 	}
 	err := env.openStore()
 	if err != nil {
@@ -60,7 +63,7 @@ func (e *Env) StartServer(listen string) error {
 
 	s := &http.Server{
 		Addr:           listen,
-		Handler:        nil,
+		Handler:        e,
 		ReadTimeout:    60 * time.Second,
 		WriteTimeout:   60 * time.Second,
 		MaxHeaderBytes: 1 << 20,
@@ -117,4 +120,8 @@ func (e *Env) updateData() error {
 	}
 
 	return nil
+}
+
+func (e *Env) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	e.frontend.ServeHTTP(w, req)
 }
