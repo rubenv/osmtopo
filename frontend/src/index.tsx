@@ -1,11 +1,31 @@
 import * as React from 'react';
 import * as ReactDOM from 'react-dom';
-import App from './App';
-import './index.css';
+
+import { configure } from "mobx";
+
 import registerServiceWorker from './registerServiceWorker';
 
-ReactDOM.render(
-  <App />,
-  document.getElementById('root') as HTMLElement
-);
+import App from './App';
+import Store from "./store";
+
+import "bootstrap/dist/css/bootstrap.css";
+
+configure({ enforceActions: true });
+
+const store = new Store();
+
+const renderApp = () => {
+    ReactDOM.render(
+        <App store={store} />,
+        document.getElementById("root") as HTMLElement
+    );
+};
+
+renderApp();
+if (module.hot) {
+    module.hot.accept("./App", renderApp);
+}
+
+store.startPoll();
+
 registerServiceWorker();

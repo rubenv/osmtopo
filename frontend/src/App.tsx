@@ -1,22 +1,45 @@
-import * as React from 'react';
-import './App.css';
+import * as React from "react";
 
-import logo from './logo.svg';
+import { observer, Provider } from "mobx-react";
 
-class App extends React.Component {
-  public render() {
-    return (
-      <div className="App">
-        <header className="App-header">
-          <img src={logo} className="App-logo" alt="logo" />
-          <h1 className="App-title">Welcome to React</h1>
-        </header>
-        <p className="App-intro">
-          To get started, edit <code>src/App.tsx</code> and save to reload.
-        </p>
-      </div>
-    );
-  }
+import { Col, Container, Row } from "reactstrap";
+
+import Store from "./store";
+
+interface AppProperties {
+    store: Store;
+}
+
+@observer
+class App extends React.Component<AppProperties, any> {
+    private renderLoading() {
+        const { store } = this.props;
+
+        return <Container className="h-100">
+            <Row className="h-100 align-items-center">
+                <Col className="text-center">
+                    <h1>Initializing...</h1>
+                    { store.updating && <p>Geometry data is being updated.</p> }
+                </Col>
+            </Row>
+            </Container>;
+    }
+
+    public render() {
+        const { store } = this.props;
+
+        if (!store.initialized) {
+            return this.renderLoading();
+        }
+
+        return (
+            <Provider store={store}>
+                <div className="h-100">
+                    App here!
+                </div>
+            </Provider>
+        );
+    }
 }
 
 export default App;
