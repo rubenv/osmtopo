@@ -1,6 +1,6 @@
 import { observable, runInAction, autorun } from "mobx";
 
-interface MissingCoordinate {
+export interface MissingCoordinate {
     coordinate: Coordinate;
     suggestions: { [key: string]: Array<Suggestion> };
 }

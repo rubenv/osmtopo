@@ -32,7 +32,7 @@ class App extends React.Component<AppProperties, any> {
     }
 
     private renderSuggestion(layer: Layer, suggestion: Suggestion) {
-        return <FormGroup check={true} className="suggestion">
+        return <FormGroup check={true} className="suggestion" key={suggestion.id}>
             <Label check={true}>
                 <Input type="radio" />{' ' + suggestion.name }
             </Label>
@@ -49,7 +49,7 @@ class App extends React.Component<AppProperties, any> {
         const suggestions = info.suggestions[layer.id];
 
         return (
-            <div>
+            <div key={layer.id}>
                 <h2>{layer.name}</h2>
                 { (!suggestions || !suggestions.length) && <em>No suggestions</em> }
                 { (suggestions && suggestions.length) && suggestions.map((suggestion) => this.renderSuggestion(layer, suggestion)) }
@@ -95,7 +95,7 @@ class App extends React.Component<AppProperties, any> {
                     </Navbar>
                     <section className="main">
                         <div className="map">
-                            <MapContainer />
+                            <MapContainer coordinate={store.coordinate} />
                         </div>
                         <div className="coordinate">
                             { store.coordinate && this.renderCoordinate() }

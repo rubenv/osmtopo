@@ -1,11 +1,16 @@
 import * as React from "react";
 
-import { Map, TileLayer } from "react-leaflet";
+import { observer } from "mobx-react";
+
+import { Map, Marker, TileLayer, Popup } from "react-leaflet";
+
+import { MissingCoordinate } from "./store";
 
 interface Properties {
-
+    coordinate?: MissingCoordinate;
 }
 
+@observer
 class MapContainer extends React.Component<Properties, any> {
     ref: any;
 
@@ -38,7 +43,11 @@ class MapContainer extends React.Component<Properties, any> {
     }
 
     render() {
-        const position = [51.505, -0.09];
+        let position = null;
+        if (this.props.coordinate) {
+            let coord = this.props.coordinate.coordinate;
+            position = [coord.lat, coord.lon];
+        }
 
         return (
             <div ref={this.ref} style={{ height: this.state.height, width: this.state.width }}>
@@ -47,6 +56,9 @@ class MapContainer extends React.Component<Properties, any> {
                     center={position}
                     zoom={13}
                 >
+                    {position && <Marker position={position}>
+                        <Popup>Test</Popup>
+                    </Marker>}
                     <TileLayer
                       url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
                       attribution="&copy; <a href=&quot;http://osm.org/copyright&quot;>OpenStreetMap</a> contributors"
