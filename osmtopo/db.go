@@ -305,6 +305,26 @@ func (e *Env) GetWay(id int64) (*model.Way, error) {
 	return way, nil
 }
 
+func (e *Env) GetRelation(id int64) (*model.Relation, error) {
+	n, err := e.db.Get(e.ro, relationKey(id))
+	if err != nil {
+		return nil, err
+	}
+	defer n.Free()
+
+	if n.Size() == 0 {
+		return nil, nil
+	}
+
+	rel := &model.Relation{}
+	err = rel.Unmarshal(n.Data())
+	if err != nil {
+		return nil, err
+	}
+
+	return rel, nil
+}
+
 func (e *Env) addMissing(arr []*model.MissingCoordinate) error {
 	for _, c := range arr {
 		c.EnsureID()

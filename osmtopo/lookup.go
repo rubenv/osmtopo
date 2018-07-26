@@ -117,3 +117,31 @@ func (l *lookupLevel) indexPolygon(id int64, poly [][][]float64) error {
 
 	return nil
 }
+
+func (l *lookupData) query(lat, lng float64, levelID int) []int64 {
+	l.levelLock.Lock()
+	level, ok := l.levels[levelID]
+	l.levelLock.Unlock()
+	if !ok {
+		return []int64{}
+	}
+
+	cell := s2.CellIDFromLatLng(s2.LatLngFromDegrees(lat, lng))
+	interval := &Interval{Cell: cell}
+
+	matches := make([]int64, 0)
+	results := level.tree.Query(interval)
+	for _, r := range results {
+		result := r.(*Interval)
+		for _, loop := range result.Loops {
+			geomId := level.loops[loop]
+			poly := level.polygons[loop]
+
+			if poly.IsInside(lat, lng) {
+				matches = append(matches, geomId)
+			}
+		}
+	}
+
+	return matches
+}
