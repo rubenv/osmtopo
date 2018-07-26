@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
 	"sync"
 	"time"
 
@@ -25,6 +26,8 @@ type Env struct {
 	db *gorocksdb.DB
 	wo *gorocksdb.WriteOptions
 	ro *gorocksdb.ReadOptions
+
+	lookup *lookupData
 
 	Status Status
 }
@@ -134,17 +137,75 @@ func (e *Env) log(section, str string, args ...interface{}) {
 }
 
 func (e *Env) updateData() error {
+	// Water
 	err := e.updateWater()
 	if err != nil {
 		return err
 	}
 
+	// OSM sources
 	for name, source := range e.config.Sources {
 		err := e.updateSource(name, source)
 		if err != nil {
 			return err
 		}
 	}
+
+	// Build lookup trees
+	lookup := newLookupData()
+	levelNeeded := make(map[int]bool)
+	levelTagNeeded := make(map[string]bool)
+	for _, layer := range e.config.Layers {
+		for _, admin := range layer.AdminLevels {
+			if !levelNeeded[admin] {
+				levelNeeded[admin] = true
+				levelTagNeeded[fmt.Sprintf("%d", admin)] = true
+			}
+		}
+	}
+
+	it, err := e.iterRelations()
+	if err != nil {
+		return err
+	}
+	defer it.Close()
+
+	for {
+		rel, err := it.Next()
+		if err != nil {
+			return err
+		}
+		if rel == nil {
+			break
+		}
+
+		a, ok := rel.GetTag("admin_level")
+		if !ok || !levelTagNeeded[a] {
+			continue
+		}
+
+		level, err := strconv.ParseInt(a, 10, 64)
+		if err != nil {
+			return err
+		}
+
+		g, err := ToGeometry(rel, e)
+		if err != nil {
+			// Broken geometry, skip!
+			continue
+		}
+
+		geom, err := GeometryFromGeos(g)
+		if err != nil {
+			return err
+		}
+
+		err = lookup.IndexGeometry(int(level), rel.Id, geom)
+		if err != nil {
+			return err
+		}
+	}
+	e.lookup = lookup
 
 	return nil
 }

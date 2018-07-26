@@ -88,6 +88,10 @@ func ToGeometry(r *model.Relation, e *Env) (*geos.Geometry, error) {
 			if err != nil {
 				return nil, err
 			}
+			if way == nil {
+				log.Printf("WARNING: Missing way %d for relation %d\n", m.Id, r.Id)
+				continue
+			}
 
 			innerParts = append(innerParts, way.Refs)
 		}

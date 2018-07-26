@@ -356,9 +356,9 @@ func (e *Env) getMissing() (*model.MissingCoordinate, error) {
 	it := e.db.NewIterator(ro)
 	defer it.Close()
 
-	keyPrefix := "missing/"
-	it.Seek([]byte(keyPrefix))
-	if !it.Valid() {
+	keyPrefix := []byte("missing/")
+	it.Seek(keyPrefix)
+	if !it.ValidForPrefix(keyPrefix) {
 		return nil, nil
 	}
 
@@ -372,4 +372,45 @@ func (e *Env) getMissing() (*model.MissingCoordinate, error) {
 	}
 
 	return missing, nil
+}
+
+type relationIter struct {
+	it     *gorocksdb.Iterator
+	prefix []byte
+}
+
+func (i *relationIter) Next() (*model.Relation, error) {
+	if !i.it.ValidForPrefix(i.prefix) {
+		return nil, nil
+	}
+
+	rel := &model.Relation{}
+	data := i.it.Value()
+	defer data.Free()
+
+	err := rel.Unmarshal(data.Data())
+	if err != nil {
+		return nil, err
+
+	}
+
+	i.it.Next()
+	return rel, nil
+}
+
+func (i *relationIter) Close() {
+	i.it.Close()
+}
+
+func (e *Env) iterRelations() (*relationIter, error) {
+	ro := gorocksdb.NewDefaultReadOptions()
+	ro.SetFillCache(false)
+
+	it := e.db.NewIterator(ro)
+	it.Seek([]byte("relation/"))
+
+	return &relationIter{
+		it:     it,
+		prefix: []byte("relation/"),
+	}, nil
 }
