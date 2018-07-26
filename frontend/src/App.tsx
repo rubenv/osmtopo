@@ -10,6 +10,8 @@ import {
 
 import Store, { Layer, Suggestion } from "./store";
 
+import MapContainer from "./MapContainer";
+
 interface AppProperties {
     store: Store;
 }
@@ -93,7 +95,7 @@ class App extends React.Component<AppProperties, any> {
                     </Navbar>
                     <section className="main">
                         <div className="map">
-                            Map here
+                            <MapContainer />
                         </div>
                         <div className="coordinate">
                             { store.coordinate && this.renderCoordinate() }

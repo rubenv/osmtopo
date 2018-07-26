@@ -9,6 +9,7 @@ import App from './App';
 import Store from "./store";
 
 import "./index.scss";
+import "leaflet/dist/leaflet.css";
 
 configure({ enforceActions: true });
 
