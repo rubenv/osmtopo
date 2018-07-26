@@ -30,9 +30,10 @@ type Env struct {
 }
 
 type Status struct {
-	Running     bool `json:"running"`
-	Initialized bool `json:"initialized"`
-	Missing     int  `json:"missing"`
+	Running     bool    `json:"running"`
+	Initialized bool    `json:"initialized"`
+	Missing     int     `json:"missing"`
+	Config      *Config `json:"config"`
 }
 
 func NewEnv(config *Config, topologiesFile, storePath string) (*Env, error) {
@@ -49,6 +50,8 @@ func NewEnv(config *Config, topologiesFile, storePath string) (*Env, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	env.Status.Config = config
 
 	if !config.NoUpdate {
 		env.done.Add(1)
@@ -77,6 +80,7 @@ func (e *Env) StartServer(listen string) error {
 	mux := http.NewServeMux()
 	mux.Handle("/api/status", http.HandlerFunc(e.handleStatus))
 	mux.Handle("/api/missing", http.HandlerFunc(e.handleMissing))
+	mux.Handle("/api/coordinate", http.HandlerFunc(e.handleCoordinate))
 	mux.Handle("/", http.FileServer(packr.NewBox("../frontend/build")))
 
 	s := &http.Server{
@@ -151,9 +155,27 @@ func (e *Env) handleStatus(w http.ResponseWriter, req *http.Request) {
 }
 
 func (e *Env) handleMissing(w http.ResponseWriter, req *http.Request) {
+	if req.Method != "POST" {
+		http.Error(w, "Should send a POST request", http.StatusBadRequest)
+		return
+	}
+
 	err := e.importMissing(req.Body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
+	}
+}
+
+func (e *Env) handleCoordinate(w http.ResponseWriter, req *http.Request) {
+	c, err := e.getMissingCoordinate()
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	err = json.NewEncoder(w).Encode(c)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}
 }

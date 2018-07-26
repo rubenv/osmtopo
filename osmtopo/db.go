@@ -348,3 +348,28 @@ func (e *Env) countMissing() (int, error) {
 
 	return missing, nil
 }
+
+func (e *Env) getMissing() (*model.MissingCoordinate, error) {
+	ro := gorocksdb.NewDefaultReadOptions()
+	ro.SetFillCache(false)
+
+	it := e.db.NewIterator(ro)
+	defer it.Close()
+
+	keyPrefix := "missing/"
+	it.Seek([]byte(keyPrefix))
+	if !it.Valid() {
+		return nil, nil
+	}
+
+	data := it.Value()
+	defer data.Free()
+
+	missing := &model.MissingCoordinate{}
+	err := missing.Unmarshal(data.Data())
+	if err != nil {
+		return nil, err
+	}
+
+	return missing, nil
+}

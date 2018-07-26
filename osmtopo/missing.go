@@ -7,6 +7,10 @@ import (
 	"github.com/rubenv/osmtopo/osmtopo/model"
 )
 
+type CoordinateInfo struct {
+	Coordinate *model.MissingCoordinate `json:"coordinate"`
+}
+
 func (e *Env) importMissing(in io.Reader) error {
 	missing := make([]*model.MissingCoordinate, 0)
 	err := json.NewDecoder(in).Decode(&missing)
@@ -26,4 +30,18 @@ func (e *Env) importMissing(in io.Reader) error {
 
 	e.Status.Missing = c
 	return nil
+}
+
+func (e *Env) getMissingCoordinate() (*CoordinateInfo, error) {
+	c, err := e.getMissing()
+	if err != nil {
+		return nil, err
+	}
+	if c == nil {
+		return nil, nil
+	}
+
+	return &CoordinateInfo{
+		Coordinate: c,
+	}, nil
 }

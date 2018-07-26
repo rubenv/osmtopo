@@ -45,7 +45,7 @@ class App extends React.Component<AppProperties, any> {
                         </Nav>
                     </Navbar>
                     <section className="main">
-                        TODO
+                        {JSON.stringify(store.coordinate)}
                     </section>
                 </section>
             </Provider>
