@@ -8,7 +8,7 @@ import registerServiceWorker from './registerServiceWorker';
 import App from './App';
 import Store from "./store";
 
-import "bootstrap/dist/css/bootstrap.css";
+import "./index.scss";
 
 configure({ enforceActions: true });
 

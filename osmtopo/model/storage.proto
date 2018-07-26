@@ -45,3 +45,9 @@ message Geometry {
     sint64 id = 1;
     bytes geojson = 2;
 }
+
+message MissingCoordinate {
+    string id  = 1;
+    double lat = 2;
+    double lon = 3;
+}

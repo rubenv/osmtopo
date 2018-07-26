@@ -304,3 +304,47 @@ func (e *Env) GetWay(id int64) (*model.Way, error) {
 
 	return way, nil
 }
+
+func (e *Env) addMissing(arr []*model.MissingCoordinate) error {
+	for _, c := range arr {
+		c.EnsureID()
+	}
+
+	wb := gorocksdb.NewWriteBatch()
+	defer wb.Destroy()
+	for _, n := range arr {
+		data, err := n.Marshal()
+		if err != nil {
+			return err
+		}
+		key := fmt.Sprintf("missing/%s", n.Id)
+		wb.Put([]byte(key), data)
+	}
+	return e.db.Write(e.wo, wb)
+}
+
+func (e *Env) countMissing() (int, error) {
+	ro := gorocksdb.NewDefaultReadOptions()
+	ro.SetFillCache(false)
+
+	it := e.db.NewIterator(ro)
+	defer it.Close()
+
+	missing := 0
+	keyPrefix := "missing/"
+	it.Seek([]byte(keyPrefix))
+	for it.Valid() {
+		key := it.Key()
+		k := key.Data()
+		if !strings.HasPrefix(string(k), keyPrefix) {
+			key.Free()
+			break
+		}
+
+		key.Free()
+		missing++
+		it.Next()
+	}
+
+	return missing, nil
+}

@@ -3,6 +3,7 @@ import { observable, runInAction } from "mobx";
 class Store {
     @observable public updating: boolean = false;
     @observable public initialized: boolean = false;
+    @observable public missing: number = 0;
 
     public startPoll() {
         this.pollStatus();
@@ -21,6 +22,7 @@ class Store {
         runInAction(() => {
             this.updating = result.running;
             this.initialized = result.initialized;
+            this.missing = result.missing || 0;
         });
     }
 }

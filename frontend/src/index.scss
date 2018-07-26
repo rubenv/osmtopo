@@ -1,0 +1,15 @@
+@import "bootstrap/scss/bootstrap.scss";
+
+section.app {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+
+section.main {
+    flex-grow: 1;
+}
+
+.navbar-dark .navbar-nav .nav-item {
+    color: #fff;
+}

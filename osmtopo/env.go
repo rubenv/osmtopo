@@ -26,12 +26,13 @@ type Env struct {
 	wo *gorocksdb.WriteOptions
 	ro *gorocksdb.ReadOptions
 
-	updateStatus UpdateStatus
+	Status Status
 }
 
-type UpdateStatus struct {
+type Status struct {
 	Running     bool `json:"running"`
 	Initialized bool `json:"initialized"`
+	Missing     int  `json:"missing"`
 }
 
 func NewEnv(config *Config, topologiesFile, storePath string) (*Env, error) {
@@ -54,6 +55,12 @@ func NewEnv(config *Config, topologiesFile, storePath string) (*Env, error) {
 		go env.runUpdater()
 	}
 
+	c, err := env.countMissing()
+	if err != nil {
+		return nil, err
+	}
+	env.Status.Missing = c
+
 	return env, nil
 }
 
@@ -69,6 +76,7 @@ func (e *Env) StartServer(listen string) error {
 
 	mux := http.NewServeMux()
 	mux.Handle("/api/status", http.HandlerFunc(e.handleStatus))
+	mux.Handle("/api/missing", http.HandlerFunc(e.handleMissing))
 	mux.Handle("/", http.FileServer(packr.NewBox("../frontend/build")))
 
 	s := &http.Server{
@@ -97,17 +105,17 @@ func (e *Env) runUpdater() {
 
 	done := e.ctx.Done()
 	for {
-		e.updateStatus.Running = true
+		e.Status.Running = true
 		nextRun := time.Now().Add(1 * time.Hour)
 
 		err := e.updateData()
 		if err != nil {
 			e.log("updater", "Failed: %s", err)
 		} else {
-			e.updateStatus.Initialized = true
+			e.Status.Initialized = true
 		}
 
-		e.updateStatus.Running = false
+		e.Status.Running = false
 
 		select {
 		case <-time.After(time.Until(nextRun)):
@@ -139,5 +147,13 @@ func (e *Env) updateData() error {
 
 func (e *Env) handleStatus(w http.ResponseWriter, req *http.Request) {
 	req.Header.Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(e.updateStatus)
+	json.NewEncoder(w).Encode(e.Status)
+}
+
+func (e *Env) handleMissing(w http.ResponseWriter, req *http.Request) {
+	err := e.importMissing(req.Body)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 }

@@ -2,7 +2,10 @@ import * as React from "react";
 
 import { observer, Provider } from "mobx-react";
 
-import { Col, Container, Row } from "reactstrap";
+import {
+    Col, Container, Row,
+    Navbar, NavbarBrand, Nav, NavItem,
+} from "reactstrap";
 
 import Store from "./store";
 
@@ -34,9 +37,17 @@ class App extends React.Component<AppProperties, any> {
 
         return (
             <Provider store={store}>
-                <div className="h-100">
-                    App here!
-                </div>
+                <section className="app">
+                    <Navbar color="dark" dark={true}>
+                        <NavbarBrand href="/">OSMtopo</NavbarBrand>
+                        <Nav navbar>
+                            <NavItem>Missing: {store.missing}</NavItem>
+                        </Nav>
+                    </Navbar>
+                    <section className="main">
+                        TODO
+                    </section>
+                </section>
             </Provider>
         );
     }
