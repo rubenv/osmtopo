@@ -1,7 +1,28 @@
 import { observable, runInAction, autorun } from "mobx";
 
-interface Coordinate {
+interface MissingCoordinate {
+    coordinate: Coordinate;
+    suggestions: { [key: string]: Array<Suggestion> };
+}
 
+interface Coordinate {
+    lat: number;
+    lon: number;
+}
+
+interface Config {
+    layers: Array<Layer>;
+}
+
+export interface Suggestion {
+    id: number;
+    name: string;
+}
+
+export interface Layer {
+    id:   string;
+    name: string;
+    admin_levels: Array<number>;
 }
 
 class Store {
@@ -9,7 +30,8 @@ class Store {
     @observable public initialized: boolean = false;
     @observable public missing: number = 0;
 
-    @observable public coordinate?: Coordinate;
+    @observable public coordinate?: MissingCoordinate;
+    @observable public config: Config;
 
     public startPoll() {
         this.pollStatus();
@@ -34,6 +56,7 @@ class Store {
             this.updating = result.running;
             this.initialized = result.initialized;
             this.missing = result.missing || 0;
+            this.config = result.config;
         });
     }
 

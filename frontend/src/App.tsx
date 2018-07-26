@@ -5,9 +5,10 @@ import { observer, Provider } from "mobx-react";
 import {
     Col, Container, Row,
     Navbar, NavbarBrand, Nav, NavItem,
+    FormGroup, Label, Input,
 } from "reactstrap";
 
-import Store from "./store";
+import Store, { Layer, Suggestion } from "./store";
 
 interface AppProperties {
     store: Store;
@@ -28,6 +29,52 @@ class App extends React.Component<AppProperties, any> {
             </Container>;
     }
 
+    private renderSuggestion(layer: Layer, suggestion: Suggestion) {
+        return <FormGroup check={true} className="suggestion">
+            <Label check={true}>
+                <Input type="radio" />{' ' + suggestion.name }
+            </Label>
+            </FormGroup>;
+    }
+
+    private renderLayer(layer: Layer) {
+        const { store } = this.props;
+        const info = store.coordinate;
+        if (!info) {
+            return;
+        }
+
+        const suggestions = info.suggestions[layer.id];
+
+        return (
+            <div>
+                <h2>{layer.name}</h2>
+                { (!suggestions || !suggestions.length) && <em>No suggestions</em> }
+                { (suggestions && suggestions.length) && suggestions.map((suggestion) => this.renderSuggestion(layer, suggestion)) }
+            </div>
+        )
+    }
+
+    private renderCoordinate() {
+        const { store } = this.props;
+        const info = store.coordinate;
+        if (!info) {
+            return;
+        }
+
+        const layers = store.config.layers;
+        return (
+            <div>
+                <div className="coord">
+                    {info.coordinate.lat}
+                    /
+                    {info.coordinate.lon}
+                </div>
+                { layers.map((l) => this.renderLayer(l)) }
+            </div>
+        );
+    }
+
     public render() {
         const { store } = this.props;
 
@@ -45,7 +92,12 @@ class App extends React.Component<AppProperties, any> {
                         </Nav>
                     </Navbar>
                     <section className="main">
-                        {JSON.stringify(store.coordinate)}
+                        <div className="map">
+                            Map here
+                        </div>
+                        <div className="coordinate">
+                            { store.coordinate && this.renderCoordinate() }
+                        </div>
                     </section>
                 </section>
             </Provider>

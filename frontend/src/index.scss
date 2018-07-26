@@ -8,8 +8,36 @@ section.app {
 
 section.main {
     flex-grow: 1;
+
+    display: flex;
+    flex-direction: row;
 }
 
 .navbar-dark .navbar-nav .nav-item {
     color: #fff;
+}
+
+.map {
+    flex-grow: 1;
+    //background-color: blue;
+}
+
+.coordinate {
+    background-color: $light;
+    padding: 10px;
+    border-left: 1px solid $gray-300;
+    width: 300px;
+
+    .coord {
+        font-family: monospace;
+    }
+
+    .suggestion label {
+        width: 100%;
+        margin: 5px;
+    }
+
+    .suggestion:hover {
+        background-color: #fcff86;
+    }
 }
