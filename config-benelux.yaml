@@ -13,11 +13,12 @@ layers:
     - id: cities
       name: Cities
       admin_levels: [8]
+      simplify: 6
     - id: regions
       name: Regions
       admin_levels: [4, 6]
-      simplify: 6
+      simplify: 4
     - id: countries
       name: Countries
       admin_levels: [2]
-      simplify: 5
+      simplify: 3

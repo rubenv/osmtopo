@@ -1,56 +1,50 @@
 package osmtopo
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/Workiva/go-datastructures/augmentedtree"
 	"github.com/golang/geo/s2"
 	geojson "github.com/paulmach/go.geojson"
+	"github.com/paulsmith/gogeos/geos"
 )
 
 type lookupData struct {
-	levels    map[int]*lookupLevel
-	levelLock sync.Mutex
+	env       *Env
+	layers    map[string]*lookupLayer
+	layerLock sync.Mutex
 }
 
-type lookupLevel struct {
-	/*
-		datafiles map[int64]string
-		datasets  map[int64]int64
-	*/
+type lookupLayer struct {
 	tree     augmentedtree.Tree
 	loops    map[int64]int64
 	polygons map[int64]*loopPolygon
 }
 
-func newLookupData() *lookupData {
+func newLookupData(env *Env) *lookupData {
 	return &lookupData{
-		levels: make(map[int]*lookupLevel),
+		env:    env,
+		layers: make(map[string]*lookupLayer),
 	}
 }
 
-func (l *lookupData) HasLevel(id int) bool {
-	// Note: not locking here, we know it's safe
-	_, ok := l.levels[id]
-	return ok
-}
-
-func (l *lookupData) IndexGeometry(levelId int, id int64, geom *geojson.Geometry) error {
-	level, ok := l.levels[levelId]
+func (l *lookupData) IndexGeometry(layerID string, id int64, geom *geojson.Geometry) error {
+	layer, ok := l.layers[layerID]
 	if !ok {
-		level = newLookupLevel()
-		l.levels[levelId] = level
+		layer = newLookupLayer()
+		l.layers[layerID] = layer
 	}
 
 	switch geom.Type {
 	case geojson.GeometryPolygon:
-		err := level.indexPolygon(id, geom.Polygon)
+		err := layer.indexPolygon(id, geom.Polygon)
 		if err != nil {
 			return err
 		}
 	case geojson.GeometryMultiPolygon:
 		for _, poly := range geom.MultiPolygon {
-			err := level.indexPolygon(id, poly)
+			err := layer.indexPolygon(id, poly)
 			if err != nil {
 				return err
 			}
@@ -60,15 +54,15 @@ func (l *lookupData) IndexGeometry(levelId int, id int64, geom *geojson.Geometry
 	return nil
 }
 
-func newLookupLevel() *lookupLevel {
-	return &lookupLevel{
+func newLookupLayer() *lookupLayer {
+	return &lookupLayer{
 		polygons: make(map[int64]*loopPolygon),
 		loops:    make(map[int64]int64),
 		tree:     augmentedtree.New(1),
 	}
 }
 
-func (l *lookupLevel) indexPolygon(id int64, poly [][][]float64) error {
+func (l *lookupLayer) indexPolygon(id int64, poly [][][]float64) error {
 	rc := s2.RegionCoverer{
 		MinLevel: 2,
 		MaxLevel: 30,
@@ -118,30 +112,54 @@ func (l *lookupLevel) indexPolygon(id int64, poly [][][]float64) error {
 	return nil
 }
 
-func (l *lookupData) query(lat, lng float64, levelID int) []int64 {
-	l.levelLock.Lock()
-	level, ok := l.levels[levelID]
-	l.levelLock.Unlock()
+func (l *lookupData) query(lat, lng float64, layerID string) ([]int64, error) {
+	l.layerLock.Lock()
+	layer, ok := l.layers[layerID]
+	l.layerLock.Unlock()
 	if !ok {
-		return []int64{}
+		return nil, fmt.Errorf("Unknown layer: %s", layerID)
 	}
 
 	cell := s2.CellIDFromLatLng(s2.LatLngFromDegrees(lat, lng))
 	interval := &Interval{Cell: cell}
 
 	matches := make([]int64, 0)
-	results := level.tree.Query(interval)
+	results := layer.tree.Query(interval)
 	for _, r := range results {
 		result := r.(*Interval)
 		for _, loop := range result.Loops {
-			geomId := level.loops[loop]
-			poly := level.polygons[loop]
+			geomId := layer.loops[loop]
+			poly := layer.polygons[loop]
 
 			if poly.IsInside(lat, lng) {
-				matches = append(matches, geomId)
+				rel, err := l.env.GetRelation(geomId)
+				if err != nil {
+					return nil, err
+				}
+				if rel == nil {
+					return nil, fmt.Errorf("Unknown relation: %d", geomId)
+				}
+
+				g, err := ToGeometry(rel, l.env)
+				if err != nil {
+					// Broken geometry, skip!
+					continue
+				}
+
+				p, err := geos.NewPoint(geos.NewCoord(lng, lat))
+				if err != nil {
+					return nil, err
+				}
+				c, err := p.Within(g)
+				if err != nil {
+					return nil, err
+				}
+				if c {
+					matches = append(matches, geomId)
+				}
 			}
 		}
 	}
 
-	return matches
+	return matches, nil
 }

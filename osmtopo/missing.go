@@ -56,25 +56,26 @@ func (e *Env) getMissingCoordinate() (*CoordinateInfo, error) {
 
 	for _, layer := range e.config.Layers {
 		suggestions := make([]*RelationSuggestion, 0)
-		for _, admin := range layer.AdminLevels {
-			matches := e.lookup.query(c.Lat, c.Lon, admin)
-
-			for _, match := range matches {
-				rel, err := e.GetRelation(match)
-				if err != nil {
-					return nil, err
-				}
-				if rel == nil {
-					return nil, fmt.Errorf("Cannot find relation for match %d", match)
-				}
-
-				name, _ := rel.GetTag("name")
-				suggestions = append(suggestions, &RelationSuggestion{
-					ID:         match,
-					Name:       name,
-					AdminLevel: admin,
-				})
+		matches, err := e.lookup.query(c.Lat, c.Lon, layer.ID)
+		if err != nil {
+			return nil, err
+		}
+		for _, match := range matches {
+			rel, err := e.GetRelation(match)
+			if err != nil {
+				return nil, err
 			}
+			if rel == nil {
+				return nil, fmt.Errorf("Cannot find relation for match %d", match)
+			}
+
+			name, _ := rel.GetTag("name")
+			admin_level := rel.GetAdminLevel()
+			suggestions = append(suggestions, &RelationSuggestion{
+				ID:         match,
+				Name:       name,
+				AdminLevel: admin_level,
+			})
 		}
 		info.Suggestions[layer.ID] = suggestions
 	}

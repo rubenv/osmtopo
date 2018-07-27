@@ -221,7 +221,7 @@ func (e *Extractor) extractLayers(layers []*ConfigLayer, depth int) error {
 		}
 	}
 
-	// Build a topology for simplification
+	// Build a topology for quantization
 	topo = topojson.NewTopology(fc, &topojson.TopologyOptions{
 		PostQuantize: 1e6,
 		Simplify:     maxErr,

@@ -7,3 +7,4 @@ layers:
     - id: communes
       name: Communes
       admin_levels: [7]
+      simplify: 6

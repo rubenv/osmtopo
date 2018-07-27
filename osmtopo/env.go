@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"math"
 	"net/http"
 	"strconv"
 	"strings"
@@ -13,8 +12,8 @@ import (
 	"time"
 
 	"github.com/gobuffalo/packr"
-	geojson "github.com/paulmach/go.geojson"
-	"github.com/rubenv/topojson"
+	"github.com/kr/pretty"
+	"github.com/rubenv/osmtopo/osmtopo/model"
 	"github.com/tecbot/gorocksdb"
 )
 
@@ -156,61 +155,39 @@ func (e *Env) updateData() error {
 		}
 	}
 
-	// Build lookup trees
-	lookup := newLookupData()
-	levelNeeded := make(map[int]bool)
-	levelTagNeeded := make(map[string]bool)
+	lookup := newLookupData(e)
 	for _, layer := range e.config.Layers {
+		levelNeeded := make(map[int]bool)
 		for _, admin := range layer.AdminLevels {
-			if !levelNeeded[admin] {
-				levelNeeded[admin] = true
-				levelTagNeeded[fmt.Sprintf("%d", admin)] = true
+			levelNeeded[admin] = true
+		}
+
+		pipe := NewGeometryPipeline(e).
+			Filter(func(rel *model.Relation) bool {
+				return levelNeeded[rel.GetAdminLevel()]
+			}).
+			Simplify(layer.Simplify)
+
+		topo, err := pipe.Run()
+		if err != nil {
+			return err
+		}
+
+		fc := topo.ToGeoJSON()
+		for _, feat := range fc.Features {
+			id, err := strconv.ParseInt(feat.ID.(string), 10, 64)
+			if err != nil {
+				return err
+			}
+
+			err = lookup.IndexGeometry(layer.ID, id, feat.Geometry)
+			if err != nil {
+				return err
 			}
 		}
 	}
-
-	it, err := e.iterRelations()
-	if err != nil {
-		return err
-	}
-	defer it.Close()
-
-	for {
-		rel, err := it.Next()
-		if err != nil {
-			return err
-		}
-		if rel == nil {
-			break
-		}
-
-		a, ok := rel.GetTag("admin_level")
-		if !ok || !levelTagNeeded[a] {
-			continue
-		}
-
-		level, err := strconv.ParseInt(a, 10, 64)
-		if err != nil {
-			return err
-		}
-
-		g, err := ToGeometry(rel, e)
-		if err != nil {
-			// Broken geometry, skip!
-			continue
-		}
-
-		geom, err := GeometryFromGeos(g)
-		if err != nil {
-			return err
-		}
-
-		err = lookup.IndexGeometry(int(level), rel.Id, geom)
-		if err != nil {
-			return err
-		}
-	}
 	e.lookup = lookup
+	pretty.Log("Done")
 
 	return nil
 }
@@ -272,43 +249,16 @@ func (e *Env) handleTopo(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	rel, err := e.GetRelation(id)
+	pipe := NewGeometryPipeline(e).
+		Select(id).
+		Simplify(layer.Simplify).
+		Quantize(1e6)
+
+	topo, err := pipe.Run()
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	if rel == nil {
-		http.Error(w, "Unknown relation", http.StatusNotFound)
-		return
-	}
-
-	geom, err := ToGeometry(rel, e)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	g, err := GeometryFromGeos(geom)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	maxErr := float64(0)
-	if layer.Simplify > 0 {
-		maxErr = math.Pow(10, float64(-layer.Simplify))
-	}
-
-	fc := geojson.NewFeatureCollection()
-	out := geojson.NewFeature(g)
-	out.SetProperty("id", fmt.Sprintf("%d", id))
-	fc.AddFeature(out)
-
-	topo := topojson.NewTopology(fc, &topojson.TopologyOptions{
-		PostQuantize: 1e6,
-		Simplify:     maxErr,
-		IDProperty:   "id",
-	})
 
 	err = json.NewEncoder(w).Encode(topo)
 	if err != nil {
