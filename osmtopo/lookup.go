@@ -83,7 +83,7 @@ func newLookupLayer() *lookupLayer {
 
 func (l *lookupLayer) indexPolygon(id int64, poly [][][]float64) error {
 	rc := s2.RegionCoverer{
-		MinLevel: 2,
+		MinLevel: 1,
 		MaxLevel: 30,
 		MaxCells: 8,
 	}
@@ -116,7 +116,8 @@ func (l *lookupLayer) indexPolygon(id int64, poly [][][]float64) error {
 		added := false
 		for _, result := range results {
 			i := result.(*Interval)
-			if cell == i.Cell {
+			if result.LowAtDimension(1) == interval.LowAtDimension(1) &&
+				result.HighAtDimension(1) == interval.HighAtDimension(1) {
 				i.Loops = append(i.Loops, loopId)
 				added = true
 			}

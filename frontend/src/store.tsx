@@ -65,7 +65,7 @@ class Store {
             method: "GET",
         });
         if (!response.ok) {
-            throw new Error("Failed: " + response.status);
+            return;
         }
         const result = await response.json();
         runInAction(() => {

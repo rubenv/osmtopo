@@ -12,7 +12,9 @@ import (
 	"time"
 
 	"github.com/gobuffalo/packr"
+	lru "github.com/hashicorp/golang-lru"
 	"github.com/rubenv/osmtopo/osmtopo/model"
+	"github.com/rubenv/topojson"
 	"github.com/tecbot/gorocksdb"
 )
 
@@ -32,7 +34,8 @@ type Env struct {
 	lookup     *lookupData
 	topologies *lookupData
 
-	topoData *TopologyData
+	topoData  *TopologyData
+	topoCache *lru.Cache
 
 	Status Status
 }
@@ -47,14 +50,20 @@ type Status struct {
 func NewEnv(config *Config, topologiesFile, storePath string) (*Env, error) {
 	ctx, cf := context.WithCancel(context.Background())
 
+	cache, err := lru.New(1024)
+	if err != nil {
+		return nil, err
+	}
+
 	env := &Env{
 		ctx:            ctx,
 		cf:             cf,
 		config:         config,
 		topologiesFile: topologiesFile,
 		storePath:      storePath,
+		topoCache:      cache,
 	}
-	err := env.openStore()
+	err = env.openStore()
 	if err != nil {
 		return nil, err
 	}
@@ -232,6 +241,39 @@ func (e *Env) loadTopologies() error {
 	return nil
 }
 
+func (e *Env) getTopology(layerID string, id int64) (*topojson.Topology, error) {
+	key := fmt.Sprintf("%s-%d", layerID, id)
+	t, ok := e.topoCache.Get(key)
+	if ok {
+		return t.(*topojson.Topology), nil
+	}
+
+	var layer Layer
+	found := false
+	for _, l := range e.config.Layers {
+		if l.ID == layerID {
+			found = true
+			layer = l
+		}
+	}
+	if !found {
+		return nil, fmt.Errorf("Unknown layer: %s", layer)
+	}
+
+	pipe := NewGeometryPipeline(e).
+		Select(id).
+		Simplify(layer.Simplify).
+		Quantize(1e6)
+
+	topo, err := pipe.Run()
+	if err != nil {
+		return nil, err
+	}
+
+	e.topoCache.Add(key, topo)
+	return topo, nil
+}
+
 func (e *Env) handleStatus(w http.ResponseWriter, req *http.Request) {
 	req.Header.Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(e.Status)
@@ -270,31 +312,13 @@ func (e *Env) handleTopo(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	var layer Layer
-	found := false
-	for _, l := range e.config.Layers {
-		if l.ID == parts[3] {
-			found = true
-			layer = l
-		}
-	}
-	if !found {
-		http.Error(w, "Unknown layer", http.StatusNotFound)
-		return
-	}
-
 	id, err := strconv.ParseInt(parts[4], 10, 64)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
-	pipe := NewGeometryPipeline(e).
-		Select(id).
-		Simplify(layer.Simplify).
-		Quantize(1e6)
-
-	topo, err := pipe.Run()
+	topo, err := e.getTopology(parts[3], id)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
