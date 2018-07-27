@@ -40,7 +40,7 @@ class App extends React.Component<AppProperties, any> {
             onMouseLeave={this.unhoverSuggestion}
         >
             <Label check={true}>
-                <Input type="radio" />{' ' + suggestion.name }
+                <Input type="radio" name={layer.id} />{' ' + suggestion.name }
             </Label>
             </FormGroup>;
     }

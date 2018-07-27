@@ -8,3 +8,16 @@ sources:
     netherlands:
         seed: http://download.geofabrik.de/europe/netherlands-latest.osm.pbf
         update: http://download.geofabrik.de/europe/netherlands-updates/
+
+layers:
+    - id: cities
+      name: Cities
+      admin_levels: [8]
+    - id: regions
+      name: Regions
+      admin_levels: [4, 6]
+      simplify: 6
+    - id: countries
+      name: Countries
+      admin_levels: [2]
+      simplify: 5

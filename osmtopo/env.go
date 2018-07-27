@@ -305,8 +305,9 @@ func (e *Env) handleTopo(w http.ResponseWriter, req *http.Request) {
 	fc.AddFeature(out)
 
 	topo := topojson.NewTopology(fc, &topojson.TopologyOptions{
-		Simplify:   maxErr,
-		IDProperty: "id",
+		PostQuantize: 1e6,
+		Simplify:     maxErr,
+		IDProperty:   "id",
 	})
 
 	err = json.NewEncoder(w).Encode(topo)
