@@ -257,7 +257,7 @@ func (e *Env) getTopology(layerID string, id int64) (*topojson.Topology, error) 
 		}
 	}
 	if !found {
-		return nil, fmt.Errorf("Unknown layer: %s", layer)
+		return nil, fmt.Errorf("Unknown layer: %s", layerID)
 	}
 
 	pipe := NewGeometryPipeline(e).
