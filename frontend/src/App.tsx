@@ -5,7 +5,7 @@ import { observer } from "mobx-react";
 import {
     Col, Container, Row,
     Navbar, NavbarBrand, Nav, NavItem,
-    FormGroup, Label, Input,
+    FormGroup, Label, Input, Button,
 } from "reactstrap";
 
 import Store, { Layer, Suggestion } from "./store";
@@ -22,12 +22,22 @@ class App extends React.Component<AppProperties, any> {
         const { store } = this.props;
 
         return <Container className="h-100">
-            <Row className="h-100 align-items-center">
-                <Col className="text-center">
-                    <h1>Initializing...</h1>
-                    { store.updating && <p>Geometry data is being updated.</p> }
-                </Col>
-            </Row>
+                <Row className="h-100 align-items-center">
+                    <Col className="text-center">
+                        <h1>Initializing...</h1>
+                        { store.updating && <p>Geometry data is being updated.</p> }
+                    </Col>
+                </Row>
+            </Container>;
+    }
+
+    private renderDone() {
+        return <Container className="h-100">
+                <Row className="h-100 align-items-center">
+                    <Col className="text-center">
+                        <h1>All done!</h1>
+                    </Col>
+                </Row>
             </Container>;
     }
 
@@ -40,7 +50,7 @@ class App extends React.Component<AppProperties, any> {
             onMouseLeave={this.unhoverSuggestion}
         >
             <Label check={true}>
-                <Input type="radio" name={layer.id} />{' ' + suggestion.name }
+                <Input type="radio" name={layer.id} onChange={this.selectSuggestion(layer, suggestion)} />{' ' + suggestion.name }
             </Label>
             </FormGroup>;
     }
@@ -53,12 +63,15 @@ class App extends React.Component<AppProperties, any> {
         }
 
         const suggestions = info.suggestions[layer.id];
+        const matched = info.matched[layer.id];
+        const name = info.matchnames[layer.id];
 
         return (
             <div key={layer.id}>
                 <h2>{layer.name}</h2>
-                { (!suggestions || !suggestions.length) && <em>No suggestions</em> }
-                { (suggestions && suggestions.length) && suggestions.map((suggestion) => this.renderSuggestion(layer, suggestion)) }
+                { matched && <em>Matched: {name}</em> }
+                { !matched && (!suggestions || !suggestions.length) && <em>No suggestions</em> }
+                { suggestions && suggestions.map((suggestion) => this.renderSuggestion(layer, suggestion)) }
             </div>
         )
     }
@@ -79,6 +92,24 @@ class App extends React.Component<AppProperties, any> {
                     {info.coordinate.lon}
                 </div>
                 { layers.map((l) => this.renderLayer(l)) }
+                <Button
+                    color="primary"
+                    disabled={store.selectionCount == 0}
+                    onClick={this.saveSelections}
+                >Save</Button>
+                {" "}
+                <Button
+                    color="danger"
+                    onClick={this.deleteMissing}
+                >Delete</Button>
+            </div>
+        );
+    }
+
+    private renderSpinner() {
+        return (
+            <div className="center-block">
+                <div className="spinner"></div>
             </div>
         );
     }
@@ -91,11 +122,27 @@ class App extends React.Component<AppProperties, any> {
         this.props.store.hoverFeature("", 0);
     }
 
+    private selectSuggestion = (layer: Layer, suggestion: Suggestion) => () => {
+        this.props.store.selectSuggestion(layer.id, suggestion.id);
+    }
+
+    private saveSelections = () => {
+        this.props.store.saveSelections();
+    }
+
+    private deleteMissing = () => {
+        this.props.store.deleteMissing();
+    }
+
     public render() {
         const { store } = this.props;
 
         if (!store.initialized) {
             return this.renderLoading();
+        }
+
+        if (!store.missing) {
+            return this.renderDone();
         }
 
         return (
@@ -111,7 +158,8 @@ class App extends React.Component<AppProperties, any> {
                         <MapContainer store={store} />
                     </div>
                     <div className="coordinate">
-                        { store.coordinate && this.renderCoordinate() }
+                        { !store.loading && store.coordinate && this.renderCoordinate() }
+                        { store.loading && this.renderSpinner() }
                     </div>
                 </section>
             </section>

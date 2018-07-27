@@ -1,8 +1,10 @@
-import { observable, runInAction, autorun, action } from "mobx";
+import { observable, runInAction, autorun, action, computed } from "mobx";
 
 export interface MissingCoordinate {
     coordinate: Coordinate;
     suggestions: { [key: string]: Array<Suggestion> };
+    matched: { [key: string]: boolean };
+    matchnames: { [key: string]: string };
 }
 
 interface Coordinate {
@@ -34,6 +36,7 @@ class Store {
     @observable public updating: boolean = false;
     @observable public initialized: boolean = false;
     @observable public missing: number = 0;
+    @observable public loading: boolean = false;
 
     @observable public coordinate?: MissingCoordinate;
     @observable public config: Config;
@@ -43,6 +46,8 @@ class Store {
 
     @observable public highlightLayer: string;
     @observable public highlightFeature: number;
+
+    @observable public selected: { [key: string]: number } = {};
 
     public startPoll() {
         this.pollStatus();
@@ -71,8 +76,9 @@ class Store {
         });
     }
 
+    @action
     private async loadCoordinate() {
-        console.log("Loading coordinate");
+        this.loading = true;
         const response = await fetch("/api/coordinate", {
             credentials: "same-origin",
             method: "GET",
@@ -83,6 +89,7 @@ class Store {
         const result = await response.json();
         runInAction(() => {
             this.coordinate = result;
+            this.loading = false;
             if (!this.coordinate) {
                 return;
             }
@@ -106,13 +113,67 @@ class Store {
             throw new Error("Failed: " + response.status);
         }
         const result = await response.json();
-        this.topologies[layer+"/"+id] = result;
+        runInAction(() => {
+            this.topologies[layer+"/"+id] = result;
+        });
     }
 
     @action
     public hoverFeature(layer: string, feature: number) {
         this.highlightLayer = layer;
         this.highlightFeature = feature;
+    }
+
+    @action
+    public selectSuggestion(layer: string, feature: number) {
+        this.selected[layer] = feature;
+    }
+
+    @computed
+    get selectionCount(): number {
+        return Object.keys(this.selected).length;
+    }
+
+    @action
+    public async saveSelections() {
+        this.loading = true;
+        const response = await fetch("/api/add", {
+            credentials: "same-origin",
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify(this.selected),
+        });
+        if (!response.ok) {
+            throw new Error("Failed: " + response.status);
+        }
+        runInAction(() => {
+            this.selected = {};
+            this.loadCoordinate();
+        });
+    }
+
+    @action
+    public async deleteMissing() {
+        if (!this.coordinate) {
+            return;
+        }
+        this.loading = true;
+        const response = await fetch("/api/delete", {
+            credentials: "same-origin",
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+            },
+            body: JSON.stringify(this.coordinate.coordinate),
+        });
+        if (!response.ok) {
+            throw new Error("Failed: " + response.status);
+        }
+        runInAction(() => {
+            this.loadCoordinate();
+        });
     }
 }
 

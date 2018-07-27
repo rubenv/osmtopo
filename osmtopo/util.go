@@ -84,7 +84,7 @@ func GeometryFromGeos(geom *geos.Geometry) (*geojson.Geometry, error) {
 func polyToRings(geom *geos.Geometry) ([][][]float64, error) {
 	shell, err := geom.Shell()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Failed to grab shell: %s", err)
 	}
 	c, err := toCoordinates(shell)
 	if err != nil {
@@ -93,7 +93,7 @@ func polyToRings(geom *geos.Geometry) ([][][]float64, error) {
 
 	holes, err := geom.Holes()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("Failed to grab holes: %s", err)
 	}
 
 	rings := make([][][]float64, len(holes)+1)
@@ -256,6 +256,10 @@ func relationKey(id int64) []byte {
 	copy(buf, "relation/")
 	binary.BigEndian.PutUint64(buf[9:], uint64(id))
 	return buf
+}
+
+func missingKey(id string) []byte {
+	return []byte(fmt.Sprintf("missing/%s", id))
 }
 
 func stampKey(stamp string) []byte {

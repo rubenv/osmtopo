@@ -337,8 +337,7 @@ func (e *Env) addMissing(arr []*model.MissingCoordinate) error {
 		if err != nil {
 			return err
 		}
-		key := fmt.Sprintf("missing/%s", n.Id)
-		wb.Put([]byte(key), data)
+		wb.Put(missingKey(n.Id), data)
 	}
 	return e.db.Write(e.wo, wb)
 }
@@ -392,6 +391,13 @@ func (e *Env) getMissing() (*model.MissingCoordinate, error) {
 	}
 
 	return missing, nil
+}
+
+func (e *Env) removeMissing(n *model.MissingCoordinate) error {
+	wb := gorocksdb.NewWriteBatch()
+	defer wb.Destroy()
+	wb.Delete(missingKey(n.Id))
+	return e.db.Write(e.wo, wb)
 }
 
 type relationIter struct {

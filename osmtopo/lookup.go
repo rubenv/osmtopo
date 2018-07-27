@@ -2,12 +2,14 @@ package osmtopo
 
 import (
 	"fmt"
+	"strconv"
 	"sync"
 
 	"github.com/Workiva/go-datastructures/augmentedtree"
 	"github.com/golang/geo/s2"
 	geojson "github.com/paulmach/go.geojson"
 	"github.com/paulsmith/gogeos/geos"
+	"github.com/rubenv/topojson"
 )
 
 type lookupData struct {
@@ -48,6 +50,23 @@ func (l *lookupData) IndexGeometry(layerID string, id int64, geom *geojson.Geome
 			if err != nil {
 				return err
 			}
+		}
+	}
+
+	return nil
+}
+
+func (l *lookupData) IndexTopology(layerID string, topo *topojson.Topology) error {
+	fc := topo.ToGeoJSON()
+	for _, feat := range fc.Features {
+		id, err := strconv.ParseInt(feat.ID.(string), 10, 64)
+		if err != nil {
+			return err
+		}
+
+		err = l.IndexGeometry(layerID, id, feat.Geometry)
+		if err != nil {
+			return fmt.Errorf("IndexGeometry: %s", err)
 		}
 	}
 
@@ -117,7 +136,7 @@ func (l *lookupData) query(lat, lng float64, layerID string) ([]int64, error) {
 	layer, ok := l.layers[layerID]
 	l.layerLock.Unlock()
 	if !ok {
-		return nil, fmt.Errorf("Unknown layer: %s", layerID)
+		return nil, nil
 	}
 
 	cell := s2.CellIDFromLatLng(s2.LatLngFromDegrees(lat, lng))

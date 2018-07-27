@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/gobuffalo/packr"
-	"github.com/kr/pretty"
 	"github.com/rubenv/osmtopo/osmtopo/model"
 	"github.com/tecbot/gorocksdb"
 )
@@ -30,7 +29,10 @@ type Env struct {
 	wo *gorocksdb.WriteOptions
 	ro *gorocksdb.ReadOptions
 
-	lookup *lookupData
+	lookup     *lookupData
+	topologies *lookupData
+
+	topoData *TopologyData
 
 	Status Status
 }
@@ -64,6 +66,11 @@ func NewEnv(config *Config, topologiesFile, storePath string) (*Env, error) {
 		go env.runUpdater()
 	}
 
+	err = env.loadTopologies()
+	if err != nil {
+		return nil, err
+	}
+
 	c, err := env.countMissing()
 	if err != nil {
 		return nil, err
@@ -88,6 +95,8 @@ func (e *Env) StartServer(listen string) error {
 	mux.Handle("/api/missing", http.HandlerFunc(e.handleMissing))
 	mux.Handle("/api/coordinate", http.HandlerFunc(e.handleCoordinate))
 	mux.Handle("/api/topo/", http.HandlerFunc(e.handleTopo))
+	mux.Handle("/api/add", http.HandlerFunc(e.handleAdd))
+	mux.Handle("/api/delete", http.HandlerFunc(e.handleDelete))
 	mux.Handle("/", http.FileServer(packr.NewBox("../frontend/build")))
 
 	s := &http.Server{
@@ -170,24 +179,55 @@ func (e *Env) updateData() error {
 
 		topo, err := pipe.Run()
 		if err != nil {
-			return err
+			return fmt.Errorf("GeometryPipeline: %s", err)
 		}
 
-		fc := topo.ToGeoJSON()
-		for _, feat := range fc.Features {
-			id, err := strconv.ParseInt(feat.ID.(string), 10, 64)
-			if err != nil {
-				return err
-			}
-
-			err = lookup.IndexGeometry(layer.ID, id, feat.Geometry)
-			if err != nil {
-				return err
-			}
+		err = lookup.IndexTopology(layer.ID, topo)
+		if err != nil {
+			return err
 		}
 	}
 	e.lookup = lookup
-	pretty.Log("Done")
+
+	return nil
+}
+
+func (e *Env) loadTopologies() error {
+	topoData, err := ReadTopologies(e.topologiesFile)
+	if err != nil {
+		return err
+	}
+	e.topoData = topoData
+
+	lookup := newLookupData(e)
+	for _, layer := range e.config.Layers {
+		ids, ok := e.topoData.Layers[layer.ID]
+		if !ok {
+			continue
+		}
+
+		idNeeded := make(map[int64]bool)
+		for _, id := range ids {
+			idNeeded[id] = true
+		}
+
+		pipe := NewGeometryPipeline(e).
+			Filter(func(rel *model.Relation) bool {
+				return idNeeded[rel.Id]
+			}).
+			Simplify(layer.Simplify)
+
+		topo, err := pipe.Run()
+		if err != nil {
+			return fmt.Errorf("GeometryPipeline: %s", err)
+		}
+
+		err = lookup.IndexTopology(layer.ID, topo)
+		if err != nil {
+			return err
+		}
+	}
+	e.topologies = lookup
 
 	return nil
 }
@@ -265,4 +305,76 @@ func (e *Env) handleTopo(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+}
+
+func (e *Env) handleAdd(w http.ResponseWriter, req *http.Request) {
+	if req.Method != "POST" {
+		http.Error(w, "Should send a POST request", http.StatusBadRequest)
+		return
+	}
+
+	in := make(map[string]int64)
+
+	err := json.NewDecoder(req.Body).Decode(&in)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	added := false
+	for _, layer := range e.config.Layers {
+		id, ok := in[layer.ID]
+		if !ok {
+			continue
+		}
+
+		e.topoData.Add(layer.ID, id)
+		pipe := NewGeometryPipeline(e).
+			Select(id).
+			Simplify(layer.Simplify)
+
+		topo, err := pipe.Run()
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		err = e.topologies.IndexTopology(layer.ID, topo)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		added = true
+	}
+
+	if added {
+		err = e.topoData.WriteTo(e.topologiesFile)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+}
+
+func (e *Env) handleDelete(w http.ResponseWriter, req *http.Request) {
+	if req.Method != "POST" {
+		http.Error(w, "Should send a POST request", http.StatusBadRequest)
+		return
+	}
+
+	in := &model.MissingCoordinate{}
+
+	err := json.NewDecoder(req.Body).Decode(&in)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	err = e.removeMissing(in)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	e.Status.Missing--
 }

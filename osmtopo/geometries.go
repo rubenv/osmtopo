@@ -124,7 +124,7 @@ func (p *GeometryPipeline) Run() (*topojson.Topology, error) {
 
 				geom, err := GeometryFromGeos(g)
 				if err != nil {
-					return err
+					return fmt.Errorf("GeometryFromGeos: %s for relation %d: %#v", err, rel.Id, g)
 				}
 
 				out := geojson.NewFeature(geom)

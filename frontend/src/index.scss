@@ -22,6 +22,7 @@ section.main {
 }
 
 .coordinate {
+    overflow: auto;
     background-color: $light;
     padding: 10px;
     border-left: 1px solid $gray-300;
@@ -39,4 +40,41 @@ section.main {
     .suggestion:hover {
         background-color: #fcff86;
     }
+}
+
+.spinner {
+    display: inline-block;
+    width: 64px;
+    height: 64px;
+}
+
+$spinner-color: $gray-800;
+
+.spinner:after {
+    content: " ";
+    display: block;
+    width: 46px;
+    height: 46px;
+    margin: 1px;
+    border-radius: 50%;
+    border: 5px solid $spinner-color;
+    border-color: $spinner-color transparent $spinner-color transparent;
+    animation: spinner 1.2s linear infinite;
+}
+
+@keyframes spinner {
+    0% {
+        transform: rotate(0deg);
+    }
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+.center-block {
+    height: 100%;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
