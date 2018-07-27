@@ -5,12 +5,16 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math"
 	"net/http"
 	"strconv"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/gobuffalo/packr"
+	geojson "github.com/paulmach/go.geojson"
+	"github.com/rubenv/topojson"
 	"github.com/tecbot/gorocksdb"
 )
 
@@ -84,6 +88,7 @@ func (e *Env) StartServer(listen string) error {
 	mux.Handle("/api/status", http.HandlerFunc(e.handleStatus))
 	mux.Handle("/api/missing", http.HandlerFunc(e.handleMissing))
 	mux.Handle("/api/coordinate", http.HandlerFunc(e.handleCoordinate))
+	mux.Handle("/api/topo/", http.HandlerFunc(e.handleTopo))
 	mux.Handle("/", http.FileServer(packr.NewBox("../frontend/build")))
 
 	s := &http.Server{
@@ -238,5 +243,75 @@ func (e *Env) handleCoordinate(w http.ResponseWriter, req *http.Request) {
 	err = json.NewEncoder(w).Encode(c)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+}
+
+func (e *Env) handleTopo(w http.ResponseWriter, req *http.Request) {
+	parts := strings.Split(req.URL.Path, "/")
+	if len(parts) != 5 {
+		http.Error(w, "Missing ID", http.StatusNotFound)
+		return
+	}
+
+	var layer Layer
+	found := false
+	for _, l := range e.config.Layers {
+		if l.ID == parts[3] {
+			found = true
+			layer = l
+		}
+	}
+	if !found {
+		http.Error(w, "Unknown layer", http.StatusNotFound)
+		return
+	}
+
+	id, err := strconv.ParseInt(parts[4], 10, 64)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	rel, err := e.GetRelation(id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if rel == nil {
+		http.Error(w, "Unknown relation", http.StatusNotFound)
+		return
+	}
+
+	geom, err := ToGeometry(rel, e)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	g, err := GeometryFromGeos(geom)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	maxErr := float64(0)
+	if layer.Simplify > 0 {
+		maxErr = math.Pow(10, float64(-layer.Simplify))
+	}
+
+	fc := geojson.NewFeatureCollection()
+	out := geojson.NewFeature(g)
+	out.SetProperty("id", fmt.Sprintf("%d", id))
+	fc.AddFeature(out)
+
+	topo := topojson.NewTopology(fc, &topojson.TopologyOptions{
+		Simplify:   maxErr,
+		IDProperty: "id",
+	})
+
+	err = json.NewEncoder(w).Encode(topo)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 }

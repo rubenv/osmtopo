@@ -1,6 +1,6 @@
 import * as React from "react";
 
-import { observer, Provider } from "mobx-react";
+import { observer } from "mobx-react";
 
 import {
     Col, Container, Row,
@@ -32,7 +32,13 @@ class App extends React.Component<AppProperties, any> {
     }
 
     private renderSuggestion(layer: Layer, suggestion: Suggestion) {
-        return <FormGroup check={true} className="suggestion" key={suggestion.id}>
+        return <FormGroup
+            check={true}
+            className="suggestion"
+            key={suggestion.id}
+            onMouseEnter={this.hoverSuggestion(layer, suggestion)}
+            onMouseLeave={this.unhoverSuggestion}
+        >
             <Label check={true}>
                 <Input type="radio" />{' ' + suggestion.name }
             </Label>
@@ -77,6 +83,14 @@ class App extends React.Component<AppProperties, any> {
         );
     }
 
+    private hoverSuggestion = (layer: Layer, suggestion: Suggestion) => () => {
+        this.props.store.hoverFeature(layer.id, suggestion.id);
+    }
+
+    private unhoverSuggestion = () => {
+        this.props.store.hoverFeature("", 0);
+    }
+
     public render() {
         const { store } = this.props;
 
@@ -85,24 +99,22 @@ class App extends React.Component<AppProperties, any> {
         }
 
         return (
-            <Provider store={store}>
-                <section className="app">
-                    <Navbar color="dark" dark={true}>
-                        <NavbarBrand href="/">OSMtopo</NavbarBrand>
-                        <Nav navbar>
-                            <NavItem>Missing: {store.missing}</NavItem>
-                        </Nav>
-                    </Navbar>
-                    <section className="main">
-                        <div className="map">
-                            <MapContainer coordinate={store.coordinate} />
-                        </div>
-                        <div className="coordinate">
-                            { store.coordinate && this.renderCoordinate() }
-                        </div>
-                    </section>
+            <section className="app">
+                <Navbar color="dark" dark={true}>
+                    <NavbarBrand href="/">OSMtopo</NavbarBrand>
+                    <Nav navbar>
+                        <NavItem>Missing: {store.missing}</NavItem>
+                    </Nav>
+                </Navbar>
+                <section className="main">
+                    <div className="map">
+                        <MapContainer store={store} />
+                    </div>
+                    <div className="coordinate">
+                        { store.coordinate && this.renderCoordinate() }
+                    </div>
                 </section>
-            </Provider>
+            </section>
         );
     }
 }

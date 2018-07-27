@@ -45,6 +45,7 @@ type Layer struct {
 	ID          string `yaml:"id" json:"id"`
 	Name        string `yaml:"name" json:"name"`
 	AdminLevels []int  `yaml:"admin_levels" json:"admin_levels"`
+	Simplify    int    `yaml:"simplify" json:"simplify"`
 }
 
 func ReadConfig(filename string) (*Config, error) {

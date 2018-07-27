@@ -10,7 +10,8 @@
         "react": "^16.4.1",
         "react-dom": "^16.4.1",
         "react-leaflet": "^2.0.0",
-        "reactstrap": "^6.3.0"
+        "reactstrap": "^6.3.0",
+        "topojson": "^3.0.2"
     },
     "scripts": {
         "start": "react-app-rewired start",
