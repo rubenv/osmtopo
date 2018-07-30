@@ -3,12 +3,13 @@ package osmtopo
 import (
 	"io"
 	"os"
+	"sort"
 
 	yaml "gopkg.in/yaml.v2"
 )
 
 type TopologyData struct {
-	Layers map[string][]int64 `yaml:"layers" json:"layers"`
+	Layers map[string]IDSlice `yaml:"layers" json:"layers"`
 }
 
 func ReadTopologies(filename string) (*TopologyData, error) {
@@ -39,13 +40,14 @@ func ParseTopologies(in io.Reader) (*TopologyData, error) {
 
 func NewTopologyData() *TopologyData {
 	return &TopologyData{
-		Layers: make(map[string][]int64),
+		Layers: make(map[string]IDSlice),
 	}
 }
 
 func (t *TopologyData) Add(layer string, id int64) {
 	if !t.Contains(layer, id) {
 		t.Layers[layer] = append(t.Layers[layer], id)
+		sort.Sort(t.Layers[layer])
 	}
 }
 
@@ -73,3 +75,9 @@ func (t *TopologyData) WriteTo(filename string) error {
 	defer fp.Close()
 	return yaml.NewEncoder(fp).Encode(t)
 }
+
+type IDSlice []int64
+
+func (p IDSlice) Len() int           { return len(p) }
+func (p IDSlice) Less(i, j int) bool { return p[i] < p[j] }
+func (p IDSlice) Swap(i, j int)      { p[i], p[j] = p[j], p[i] }
