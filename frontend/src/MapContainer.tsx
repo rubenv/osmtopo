@@ -67,13 +67,15 @@ class MapContainer extends React.Component<Properties, any> {
             const topo = store.topologies[topoKey];
             if (topo) {
                 const obj = topo.objects[store.highlightFeature];
-                this.geoData = topojson.feature(topo, obj);
+                if (obj) {
+                    this.geoData = topojson.feature(topo, obj);
 
-                const bbox = topo.bbox;
-                this.bounds = [
-                    [bbox[1], bbox[0]],
-                    [bbox[3], bbox[2]],
-                ];
+                    const bbox = topo.bbox;
+                    this.bounds = [
+                        [bbox[1], bbox[0]],
+                        [bbox[3], bbox[2]],
+                    ];
+                }
             }
         }
 
