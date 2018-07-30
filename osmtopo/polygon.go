@@ -97,6 +97,10 @@ func reverse(coords [][]float64) [][]float64 {
 	return c
 }
 
+func coordEquals(a, b []float64) bool {
+	return a[0] == b[0] && a[1] == b[1]
+}
+
 func makeLoop(coords [][]float64) *s2.Loop {
 	// s2.Loop is always CCW
 	if isClockwise(coords) {
@@ -104,10 +108,13 @@ func makeLoop(coords [][]float64) *s2.Loop {
 	}
 
 	// Skip last point, not stored in loop
-	points := make([]s2.Point, len(coords)-1)
+	points := make([]s2.Point, 0, len(coords)-1)
 	for i := 0; i < len(coords)-1; i++ {
+		if i > 0 && coordEquals(coords[i-1], coords[i]) {
+			continue
+		}
 		latlon := s2.LatLngFromDegrees(coords[i][1], coords[i][0])
-		points[i] = s2.PointFromLatLng(latlon)
+		points = append(points, s2.PointFromLatLng(latlon))
 	}
 
 	return s2.LoopFromPoints(points)
