@@ -56,7 +56,6 @@ func (e *Env) importMissing(in io.Reader) error {
 	}
 
 	e.Status.Missing = c
-	e.statusUpdated()
 	return nil
 }
 
@@ -128,7 +127,6 @@ func (e *Env) getMissingCoordinate() (*CoordinateInfo, error) {
 			return nil, err
 		}
 		e.Status.Missing--
-		e.statusUpdated()
 
 		return e.getMissingCoordinate()
 	}
