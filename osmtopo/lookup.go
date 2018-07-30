@@ -92,11 +92,11 @@ func (l *lookupLayer) indexPolygon(id int64, poly [][][]float64) error {
 	outer := makeLoop(poly[0])
 	err := outer.Validate()
 	if err != nil {
-		return err
+		return fmt.Errorf("Invalid outer loop for %d: %s", id, err)
 	}
 
 	inner := make([]*s2.Loop, 0)
-	for _, coords := range poly[1:] {
+	for i, coords := range poly[1:] {
 		loop := makeLoop(coords)
 		if loop == nil {
 			continue
@@ -104,7 +104,7 @@ func (l *lookupLayer) indexPolygon(id int64, poly [][][]float64) error {
 
 		err := loop.Validate()
 		if err != nil {
-			return err
+			return fmt.Errorf("Invalid inner loop %d for %d: %s", i, id, err)
 		}
 		inner = append(inner, loop)
 	}

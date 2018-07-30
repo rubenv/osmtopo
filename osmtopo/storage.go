@@ -87,7 +87,7 @@ func ToGeometry(r *model.Relation, e *Env) (*geos.Geometry, error) {
 				return nil, err
 			}
 			if way == nil {
-				log.Printf("WARNING: Missing way %d for relation %d\n", m.Id, r.Id)
+				log.Printf("WARNING: Missing outer way %d for relation %d\n", m.Id, r.Id)
 				continue
 			}
 
@@ -100,7 +100,7 @@ func ToGeometry(r *model.Relation, e *Env) (*geos.Geometry, error) {
 				return nil, err
 			}
 			if way == nil {
-				log.Printf("WARNING: Missing way %d for relation %d\n", m.Id, r.Id)
+				log.Printf("WARNING: Missing inner way %d for relation %d\n", m.Id, r.Id)
 				continue
 			}
 
