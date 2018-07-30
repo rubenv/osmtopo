@@ -1,5 +1,12 @@
 import { observable, runInAction, autorun, action, computed } from "mobx";
 
+interface Status {
+    running: boolean;
+    initialized: boolean;
+    missing: number;
+    config: Config;
+}
+
 export interface MissingCoordinate {
     coordinate: Coordinate;
     suggestions: { [key: string]: Array<Suggestion> };
@@ -68,12 +75,15 @@ class Store {
             return;
         }
         const result = await response.json();
-        runInAction(() => {
-            this.updating = result.running;
-            this.initialized = result.initialized;
-            this.missing = result.missing || 0;
-            this.config = result.config;
-        });
+        this.updateStatus(result);
+    }
+
+    @action
+    private updateStatus(status: Status) {
+        this.updating = status.running;
+        this.initialized = status.initialized;
+        this.missing = status.missing || 0;
+        this.config = status.config;
     }
 
     @action
