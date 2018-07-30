@@ -90,10 +90,19 @@ func (l *lookupLayer) indexPolygon(id int64, poly [][][]float64) error {
 	}
 
 	outer := makeLoop(poly[0])
+	err := outer.Validate()
+	if err != nil {
+		return err
+	}
 
 	inner := make([]*s2.Loop, 0)
 	for _, coords := range poly[1:] {
-		inner = append(inner, makeLoop(coords))
+		loop := makeLoop(coords)
+		err := loop.Validate()
+		if err != nil {
+			return err
+		}
+		inner = append(inner, loop)
 	}
 
 	loopId := int64(len(l.loops))
