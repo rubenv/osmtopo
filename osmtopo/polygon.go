@@ -117,6 +117,9 @@ func makeLoop(coords [][]float64) *s2.Loop {
 		points = append(points, s2.PointFromLatLng(latlon))
 	}
 
+	if len(points) < 3 {
+		return nil
+	}
 	return s2.LoopFromPoints(points)
 }
 
