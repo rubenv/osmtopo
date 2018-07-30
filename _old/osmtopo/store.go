@@ -15,26 +15,6 @@ type Store struct {
 	ro *gorocksdb.ReadOptions
 }
 
-func (s *Store) GetRelation(id int64) (*model.Relation, error) {
-	n, err := s.db.Get(s.ro, relationKey(id))
-	if err != nil {
-		return nil, err
-	}
-	defer n.Free()
-
-	if n.Size() == 0 {
-		return nil, nil
-	}
-
-	rel := &model.Relation{}
-	err = rel.Unmarshal(n.Data())
-	if err != nil {
-		return nil, err
-	}
-
-	return rel, nil
-}
-
 func (s *Store) GetGeometry(prefix string, id int64) (*model.Geometry, error) {
 	n, err := s.db.Get(s.ro, []byte(fmt.Sprintf("geometry/%s/%d", prefix, id)))
 	if err != nil {
@@ -86,15 +66,3 @@ func (s *Store) SetConfig(key, value string) error {
 	wb.Put([]byte(fmt.Sprintf("config/%s", key)), []byte(value))
 	return s.db.Write(s.wo, wb)
 }
-
-/*
-func (s *Store) Resolve(configPath string, lat, lon float64) ([]ResolvedCoordinate, error) {
-	config, err := ParseConfig(configPath)
-	if err != nil {
-		return nil, err
-	}
-	pretty.Log(config)
-
-	return nil, nil
-}
-*/
