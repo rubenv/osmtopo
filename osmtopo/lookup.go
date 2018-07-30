@@ -8,12 +8,10 @@ import (
 	"github.com/Workiva/go-datastructures/augmentedtree"
 	"github.com/golang/geo/s2"
 	geojson "github.com/paulmach/go.geojson"
-	"github.com/paulsmith/gogeos/geos"
 	"github.com/rubenv/topojson"
 )
 
 type lookupData struct {
-	env       *Env
 	layers    map[string]*lookupLayer
 	layerLock sync.Mutex
 }
@@ -24,9 +22,8 @@ type lookupLayer struct {
 	polygons map[int64]*loopPolygon
 }
 
-func newLookupData(env *Env) *lookupData {
+func newLookupData() *lookupData {
 	return &lookupData{
-		env:    env,
 		layers: make(map[string]*lookupLayer),
 	}
 }
@@ -83,8 +80,8 @@ func newLookupLayer() *lookupLayer {
 
 func (l *lookupLayer) indexPolygon(id int64, poly [][][]float64) error {
 	rc := s2.RegionCoverer{
-		MinLevel: 1,
-		MaxLevel: 30,
+		MinLevel: 4,
+		MaxLevel: 22,
 		MaxCells: 8,
 	}
 
@@ -132,7 +129,7 @@ func (l *lookupLayer) indexPolygon(id int64, poly [][][]float64) error {
 	return nil
 }
 
-func (l *lookupData) query(lat, lng float64, layerID string) ([]int64, error) {
+func (l *lookupData) Query(lat, lng float64, layerID string) ([]int64, error) {
 	l.layerLock.Lock()
 	layer, ok := l.layers[layerID]
 	l.layerLock.Unlock()
@@ -152,31 +149,7 @@ func (l *lookupData) query(lat, lng float64, layerID string) ([]int64, error) {
 			poly := layer.polygons[loop]
 
 			if poly.IsInside(lat, lng) {
-				rel, err := l.env.GetRelation(geomId)
-				if err != nil {
-					return nil, err
-				}
-				if rel == nil {
-					return nil, fmt.Errorf("Unknown relation: %d", geomId)
-				}
-
-				g, err := ToGeometry(rel, l.env)
-				if err != nil {
-					// Broken geometry, skip!
-					continue
-				}
-
-				p, err := geos.NewPoint(geos.NewCoord(lng, lat))
-				if err != nil {
-					return nil, err
-				}
-				c, err := p.Within(g)
-				if err != nil {
-					return nil, err
-				}
-				if c {
-					matches = append(matches, geomId)
-				}
+				matches = append(matches, geomId)
 			}
 		}
 	}

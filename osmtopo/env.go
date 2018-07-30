@@ -173,7 +173,7 @@ func (e *Env) updateData() error {
 		}
 	}
 
-	lookup := newLookupData(e)
+	lookup := newLookupData()
 	for _, layer := range e.config.Layers {
 		levelNeeded := make(map[int]bool)
 		for _, admin := range layer.AdminLevels {
@@ -208,7 +208,7 @@ func (e *Env) loadTopologies() error {
 	}
 	e.topoData = topoData
 
-	lookup := newLookupData(e)
+	lookup := newLookupData()
 	for _, layer := range e.config.Layers {
 		ids, ok := e.topoData.Layers[layer.ID]
 		if !ok {
