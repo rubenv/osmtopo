@@ -11,10 +11,21 @@ import (
 	"github.com/rubenv/osmtopo/simplify"
 )
 
-func AcceptRelation(r model.Relation) bool {
+func AcceptRelation(r model.Relation, blacklist []int64) bool {
 	admin, _ := r.GetTag("admin_level")
 	natural, _ := r.GetTag("natural")
-	return admin != "" || natural == "water"
+	ok := admin != "" || natural == "water"
+	if !ok {
+		return false
+	}
+
+	for _, id := range blacklist {
+		if r.Id == id {
+			return false
+		}
+	}
+
+	return true
 }
 
 func AcceptTag(k, v string) bool {

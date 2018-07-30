@@ -182,7 +182,7 @@ func (e *Env) applyDelta(name string, source PBFSource, folder string, seq int64
 			}
 			if elem.Rel != nil {
 				r := RelationFromEl(*elem.Rel)
-				if AcceptRelation(r) {
+				if AcceptRelation(r, e.config.Blacklist) {
 					newRelations = append(newRelations, r)
 				}
 			}

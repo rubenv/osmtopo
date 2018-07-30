@@ -24,6 +24,9 @@ type Config struct {
 	// Output layers
 	Layers []Layer `yaml:"layers" json:"layers"`
 
+	// Blacklist features
+	Blacklist []int64 `yaml:"blacklist" json:"blacklist"`
+
 	// **** Bits below usually don't need to be set ****
 
 	// Don't update data sources

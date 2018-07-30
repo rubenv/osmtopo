@@ -22,3 +22,6 @@ layers:
       name: Countries
       admin_levels: [2]
       simplify: 3
+
+blacklist:
+    - 3659532

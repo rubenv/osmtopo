@@ -362,7 +362,7 @@ loop:
 			}
 
 			r := RelationFromEl(n)
-			if !AcceptRelation(r) {
+			if !AcceptRelation(r, i.env.config.Blacklist) {
 				continue
 			}
 
