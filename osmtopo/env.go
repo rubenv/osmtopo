@@ -13,6 +13,7 @@ import (
 
 	"github.com/gobuffalo/packr"
 	lru "github.com/hashicorp/golang-lru"
+	"github.com/rubenv/eventsource"
 	"github.com/rubenv/osmtopo/osmtopo/model"
 	"github.com/rubenv/topojson"
 	"github.com/tecbot/gorocksdb"
@@ -36,6 +37,8 @@ type Env struct {
 
 	topoData  *TopologyData
 	topoCache *lru.Cache
+
+	statusUpdates *eventsource.Source
 
 	Status Status
 }
@@ -62,6 +65,7 @@ func NewEnv(config *Config, topologiesFile, storePath string) (*Env, error) {
 		topologiesFile: topologiesFile,
 		storePath:      storePath,
 		topoCache:      cache,
+		statusUpdates:  eventsource.New(),
 	}
 	err = env.openStore()
 	if err != nil {
@@ -101,6 +105,7 @@ func (e *Env) StartServer(listen string) error {
 
 	mux := http.NewServeMux()
 	mux.Handle("/api/status", http.HandlerFunc(e.handleStatus))
+	mux.Handle("/api/statusUpdates", e.statusUpdates)
 	mux.Handle("/api/missing", http.HandlerFunc(e.handleMissing))
 	mux.Handle("/api/coordinate", http.HandlerFunc(e.handleCoordinate))
 	mux.Handle("/api/topo/", http.HandlerFunc(e.handleTopo))
@@ -135,6 +140,7 @@ func (e *Env) runUpdater() {
 	done := e.ctx.Done()
 	for {
 		e.Status.Running = true
+		e.statusUpdated()
 		nextRun := time.Now().Add(1 * time.Hour)
 
 		err := e.updateData()
@@ -145,6 +151,7 @@ func (e *Env) runUpdater() {
 		}
 
 		e.Status.Running = false
+		e.statusUpdated()
 
 		select {
 		case <-time.After(time.Until(nextRun)):
@@ -401,4 +408,10 @@ func (e *Env) handleDelete(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	e.Status.Missing--
+	e.statusUpdated()
+}
+
+func (e *Env) statusUpdated() {
+	d, _ := json.Marshal(e.Status)
+	e.statusUpdates.Publish(d)
 }
