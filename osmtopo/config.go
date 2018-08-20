@@ -8,8 +8,9 @@ import (
 	yaml "gopkg.in/yaml.v2"
 )
 
+const Day = 24 * time.Hour
 const DefaultWaterPolygons = "http://data.openstreetmapdata.com/water-polygons-split-4326.zip"
-const DefaultWaterUpdate = 24 * 7 * time.Hour
+const DefaultWaterUpdate = 4 * 7 * Day
 
 type Config struct {
 	// Where to download water polygons
@@ -32,7 +33,7 @@ type Config struct {
 	// Don't update data sources
 	NoUpdate bool `yaml:"no_update" json:"no_update"`
 
-	// Update interval in seconds, defaults to 1 week
+	// Update interval in seconds, defaults to every 4 weeks
 	UpdateWaterEvery int64 `yaml:"update_water_every" json:"update_water_every"`
 }
 
