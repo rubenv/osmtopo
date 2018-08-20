@@ -18,7 +18,9 @@ import (
 	"github.com/northbright/ctx/ctxdownload"
 	geo "github.com/paulmach/go.geo"
 	"github.com/paulmach/go.geo/reducers"
+	geojson "github.com/paulmach/go.geojson"
 	"github.com/rubenv/osmtopo/osmtopo/model"
+	"github.com/rubenv/topojson"
 )
 
 func (e *Env) updateWater() error {
@@ -220,4 +222,61 @@ func (e *Env) processWaterPolygon(id int64, poly *shp.Polygon) (*model.Geometry,
 		Id:      id,
 		Geojson: b,
 	}, nil
+}
+
+func (e *Env) loadWaterClipGeos(maxErr float64) ([]*clipGeometry, error) {
+	// Load water geometries
+	keys, err := e.GetGeometries("water")
+	if err != nil {
+		return nil, err
+	}
+
+	if len(keys) == 0 {
+		return nil, errors.New("No water found, did you forget to import first?")
+	}
+
+	fc := geojson.NewFeatureCollection()
+	clipGeos := make([]*clipGeometry, 0, len(keys))
+	for _, key := range keys {
+		f, err := e.GetGeometry("water", key)
+		if err != nil {
+			return nil, err
+		}
+
+		geometry := &geojson.Geometry{}
+		err = json.Unmarshal(f.Geojson, geometry)
+		if err != nil {
+			return nil, err
+		}
+
+		out := geojson.NewFeature(geometry)
+		out.SetProperty("id", fmt.Sprintf("%d", key))
+
+		fc.AddFeature(out)
+	}
+
+	topo := topojson.NewTopology(fc, &topojson.TopologyOptions{
+		Simplify:   maxErr,
+		IDProperty: "id",
+	})
+	fc = topo.ToGeoJSON()
+
+	for _, feat := range fc.Features {
+		geom, err := GeometryToGeos(feat.Geometry)
+		if err != nil {
+			return nil, err
+		}
+
+		geom, err = geom.Buffer(0)
+		if err != nil {
+			return nil, err
+		}
+
+		clipGeos = append(clipGeos, &clipGeometry{
+			Geometry: geom,
+			Prepared: geom.Prepare(),
+		})
+	}
+
+	return clipGeos, nil
 }

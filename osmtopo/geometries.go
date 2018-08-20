@@ -7,12 +7,18 @@ import (
 	"sync"
 
 	geojson "github.com/paulmach/go.geojson"
+	"github.com/paulsmith/gogeos/geos"
 	"github.com/rubenv/osmtopo/osmtopo/model"
 	"github.com/rubenv/topojson"
 	"golang.org/x/sync/errgroup"
 )
 
 type RelationFilterFunc func(rel *model.Relation) bool
+
+type clipGeometry struct {
+	Geometry *geos.Geometry
+	Prepared *geos.PGeometry
+}
 
 type GeometryPipeline struct {
 	id        int64
@@ -170,13 +176,60 @@ func (p *GeometryPipeline) Run() (*topojson.Topology, error) {
 		return nil
 	})
 
-	// TODO: Clip water
+	clipped := make(chan *geojson.FeatureCollection)
+	g.Go(func() error {
+		in := <-simplified
+
+		if !p.clipwater {
+			clipped <- in
+			return nil
+		}
+
+		clipGeos, err := p.env.loadWaterClipGeos(maxErr)
+		if err != nil {
+			return err
+		}
+
+		out := geojson.NewFeatureCollection()
+		for _, feat := range in.Features {
+			geom, err := GeometryToGeos(feat.Geometry)
+			if err != nil {
+				return err
+			}
+
+			for _, clipGeom := range clipGeos {
+				intersects, err := clipGeom.Prepared.Intersects(geom)
+				if err != nil {
+					return err
+				}
+
+				if intersects {
+					clipped, err := geom.Difference(clipGeom.Geometry)
+					// We ignore clipping errors here, these may happen when a
+					// self-intersection occurs
+					if err == nil {
+						geom = clipped
+					}
+				}
+			}
+
+			g, err := GeometryFromGeos(geom)
+			if err != nil {
+				return err
+			}
+			feat.Geometry = g
+			out.AddFeature(feat)
+		}
+		clipped <- out
+
+		return nil
+	})
 
 	// Simplify again, this time using quantization
 	quantized := make(chan *topojson.Topology, 1)
 	g.Go(func() error {
 		defer close(quantized)
-		topo := topojson.NewTopology(<-simplified, &topojson.TopologyOptions{
+		topo := topojson.NewTopology(<-clipped, &topojson.TopologyOptions{
 			PostQuantize: p.quantize,
 			Simplify:     maxErr,
 			IDProperty:   "id",

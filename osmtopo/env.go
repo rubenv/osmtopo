@@ -113,6 +113,7 @@ func (e *Env) StartServer(listen string) error {
 	mux.Handle("/api/topo/", http.HandlerFunc(e.handleTopo))
 	mux.Handle("/api/add", http.HandlerFunc(e.handleAdd))
 	mux.Handle("/api/delete", http.HandlerFunc(e.handleDelete))
+	mux.Handle("/api/export", http.HandlerFunc(e.handleExport))
 	mux.Handle("/", http.FileServer(packr.NewBox("../frontend/build")))
 
 	s := &http.Server{
@@ -159,6 +160,20 @@ func (e *Env) runUpdater() {
 			return
 		}
 	}
+}
+
+func (e *Env) runExporter() {
+	e.done.Add(1)
+	defer e.done.Done()
+
+	e.Status.Export.Running = true
+	err := e.export()
+	if err != nil {
+		e.Status.Export.Error = err.Error()
+	} else {
+		e.Status.Export.Error = ""
+	}
+	e.Status.Export.Running = false
 }
 
 func (e *Env) log(section, str string, args ...interface{}) {
@@ -270,6 +285,7 @@ func (e *Env) getTopology(layerID string, id int64) (*topojson.Topology, error) 
 	pipe := NewGeometryPipeline(e).
 		Select(id).
 		Simplify(layer.Simplify).
+		ClipWater().
 		Quantize(1e6)
 
 	topo, err := pipe.Run()
@@ -408,4 +424,13 @@ func (e *Env) handleDelete(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	e.Status.Missing--
+}
+
+func (e *Env) handleExport(w http.ResponseWriter, req *http.Request) {
+	if req.Method != "POST" {
+		http.Error(w, "Should send a POST request", http.StatusBadRequest)
+		return
+	}
+
+	go e.runExporter()
 }
