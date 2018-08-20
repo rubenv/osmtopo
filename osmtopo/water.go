@@ -110,7 +110,7 @@ func (e *Env) importWater(filename, folder string) error {
 
 		geometry, err := e.processWaterPolygon(id, poly)
 		if err != nil {
-			return err
+			return fmt.Errorf("Failed to process polygon %d: %s", id, err)
 		}
 		if geometry != nil {
 			geometries = append(geometries, geometry)
