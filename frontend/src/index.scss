@@ -78,3 +78,12 @@ $spinner-color: $gray-800;
     align-items: center;
     justify-content: center;
 }
+
+.export-status {
+    position: fixed;
+    width: 100%;
+    left: 0px;
+    bottom: 0px;
+    padding: 20px;
+    z-index: 9999;
+}

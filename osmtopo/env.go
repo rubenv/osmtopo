@@ -45,6 +45,13 @@ type Status struct {
 	Initialized bool    `json:"initialized"`
 	Missing     int     `json:"missing"`
 	Config      *Config `json:"config"`
+
+	Export ExportStatus `json:"export"`
+}
+
+type ExportStatus struct {
+	Running bool   `json:"running"`
+	Error   string `json:"error"`
 }
 
 func NewEnv(config *Config, topologiesFile, storePath string) (*Env, error) {

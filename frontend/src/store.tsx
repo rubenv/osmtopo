@@ -2,9 +2,15 @@ import { observable, runInAction, autorun, action, computed } from "mobx";
 
 interface Status {
     running: boolean;
+    export: ExportStatus;
     initialized: boolean;
     missing: number;
     config: Config;
+}
+
+export interface ExportStatus {
+    running: boolean;
+    error: string;
 }
 
 export interface MissingCoordinate {
@@ -41,6 +47,7 @@ interface Topology {
 
 class Store {
     @observable public updating: boolean = false;
+    @observable public export: ExportStatus;
     @observable public initialized: boolean = false;
     @observable public missing: number = 0;
     @observable public loading: boolean = false;
@@ -81,6 +88,7 @@ class Store {
     @action
     private updateStatus(status: Status) {
         this.updating = status.running;
+        this.export = status.export;
         this.initialized = status.initialized;
         this.missing = status.missing || 0;
         this.config = status.config;

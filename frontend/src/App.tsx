@@ -5,10 +5,10 @@ import { observer } from "mobx-react";
 import {
     Col, Container, Row,
     Navbar, NavbarBrand, Nav, NavItem,
-    FormGroup, Label, Input, Button,
+    FormGroup, Label, Input, Button, Alert
 } from "reactstrap";
 
-import Store, { Layer, Suggestion } from "./store";
+import Store, { ExportStatus, Layer, Suggestion } from "./store";
 
 import MapContainer from "./MapContainer";
 
@@ -32,7 +32,10 @@ class App extends React.Component<AppProperties, any> {
     }
 
     private renderDone() {
+        const { store } = this.props;
+
         return <Container className="h-100">
+                { store.export && this.renderExport(store.export) }
                 <Row className="h-100 align-items-center">
                     <Col className="text-center">
                         <h1>All done!</h1>
@@ -114,6 +117,18 @@ class App extends React.Component<AppProperties, any> {
         );
     }
 
+    private renderExport(e: ExportStatus) {
+        if (!e.running && !e.error) {
+            return <div />;
+        }
+        return (
+            <div className="export-status">
+                { e.running && <Alert color="primary">Export running...</Alert> }
+                { e.error != "" && <Alert color="danger">Export failed: {e.error}</Alert> }
+            </div>
+        );
+    }
+
     private hoverSuggestion = (layer: Layer, suggestion: Suggestion) => () => {
         this.props.store.hoverFeature(layer.id, suggestion.id);
     }
@@ -161,6 +176,7 @@ class App extends React.Component<AppProperties, any> {
                         { !store.loading && store.coordinate && this.renderCoordinate() }
                         { store.loading && this.renderSpinner() }
                     </div>
+                    { store.export && this.renderExport(store.export) }
                 </section>
             </section>
         );
