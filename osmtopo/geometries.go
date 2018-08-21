@@ -211,6 +211,12 @@ func (p *GeometryPipeline) Run() (*topojson.Topology, error) {
 				return err
 			}
 
+			// Apply a buffer to avoid self-intersections
+			geom, err = geom.Buffer(0)
+			if err != nil {
+				return err
+			}
+
 			for _, clipGeom := range clipGeos {
 				intersects, err := clipGeom.Prepared.Intersects(geom)
 				if err != nil {
@@ -221,9 +227,10 @@ func (p *GeometryPipeline) Run() (*topojson.Topology, error) {
 					clipped, err := geom.Difference(clipGeom.Geometry)
 					// We ignore clipping errors here, these may happen when a
 					// self-intersection occurs
-					if err == nil {
-						geom = clipped
+					if err != nil {
+						return fmt.Errorf("Failed to clip %s: %s\n", feat.ID, err)
 					}
+					geom = clipped
 				}
 			}
 
