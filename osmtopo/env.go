@@ -27,6 +27,7 @@ type Env struct {
 	config         *Config
 	topologiesFile string
 	storePath      string
+	outputPath     string
 
 	db *gorocksdb.DB
 	wo *gorocksdb.WriteOptions
@@ -58,7 +59,7 @@ type ExportStatus struct {
 	Error   string `json:"error"`
 }
 
-func NewEnv(config *Config, topologiesFile, storePath string) (*Env, error) {
+func NewEnv(config *Config, topologiesFile, storePath, outputPath string) (*Env, error) {
 	ctx, cf := context.WithCancel(context.Background())
 
 	cache, err := lru.New(1024)
@@ -72,6 +73,7 @@ func NewEnv(config *Config, topologiesFile, storePath string) (*Env, error) {
 		config:         config,
 		topologiesFile: topologiesFile,
 		storePath:      storePath,
+		outputPath:     outputPath,
 		topoCache:      cache,
 		waterClipGeos:  make(map[string][]*clipGeometry),
 	}

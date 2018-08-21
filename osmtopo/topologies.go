@@ -67,6 +67,10 @@ func (t *TopologyData) Contains(layer string, id int64) bool {
 	return found
 }
 
+func (t *TopologyData) Get(layer string) IDSlice {
+	return t.Layers[layer]
+}
+
 func (t *TopologyData) WriteTo(filename string) error {
 	fp, err := os.Create(filename)
 	if err != nil {
