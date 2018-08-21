@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"strings"
 
 	"github.com/northbright/ctx/ctxdownload"
 	"github.com/omniscale/imposm3/parser/diff"
@@ -62,12 +63,17 @@ func (e *Env) importPBF(name string, source PBFSource, folder string) error {
 	e.log(fmt.Sprintf("source/%s", name), "Importing PBF")
 
 	filename := fmt.Sprintf("%s.pbf", name)
-	err := e.downloadPBF(name, folder, filename, source.Seed)
-	if err != nil {
-		return err
+	fullname := path.Join(folder, filename)
+	if strings.HasPrefix(source.Seed, "http://") || strings.HasPrefix(source.Seed, "https://") {
+		err := e.downloadPBF(name, folder, filename, source.Seed)
+		if err != nil {
+			return err
+		}
+	} else {
+		fullname = source.Seed
 	}
 
-	i := newImporter(e, name, path.Join(folder, filename))
+	i := newImporter(e, name, fullname)
 	seq, err := i.Run()
 	if err != nil {
 		return err
