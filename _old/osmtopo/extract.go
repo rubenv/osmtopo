@@ -266,37 +266,6 @@ func (e *Extractor) processChildLayers(layers []*ConfigLayer, depth int) error {
 	return e.extractLayers(childLayers, depth+1)
 }
 
-type ClipGeometry struct {
-	Geometry *geos.Geometry
-	Prepared *geos.PGeometry
-}
-
-func (e *Extractor) ClipLayer(clipGeos []*ClipGeometry, output *LayerOutput, bar *pb.ProgressBar) error {
-	// Clip each extracted geometry with the water geometries
-	for _, feature := range output.Geometries {
-		for _, clipGeom := range clipGeos {
-			intersects, err := clipGeom.Prepared.Intersects(feature.Geometry)
-			if err != nil {
-				return err
-			}
-
-			if intersects {
-				clipped, err := feature.Geometry.Difference(clipGeom.Geometry)
-				// We ignore clipping errors here, these may happen when a self-intersection occurs
-				if err == nil {
-					feature.Geometry = clipped
-				} else {
-					log.Println(err)
-				}
-			}
-
-			bar.Increment()
-		}
-	}
-
-	return nil
-}
-
 func (e *Extractor) StoreOutput(output *LayerOutput, topo *topojson.Topology) error {
 	if len(output.Geometries) == 0 {
 		return nil
@@ -348,16 +317,5 @@ func (e *Extractor) StoreOutput(output *LayerOutput, topo *topojson.Topology) er
 		return err
 	}
 
-	return nil
-}
-
-func (e *Extractor) loadWater(maxErr float64) error {
-	// Load water geometries
-	log.Println("Loading water geometries")
-	g, err := loadWaterClipGeos(maxErr, e.store, true)
-	if err != nil {
-		return err
-	}
-	e.clipGeos = g
 	return nil
 }

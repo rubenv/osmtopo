@@ -35,21 +35,6 @@ func (s *Store) GetGeometry(prefix string, id int64) (*model.Geometry, error) {
 	return rel, nil
 }
 
-func (s *Store) Extract(configPath, outPath string) error {
-	config, err := ParseConfig(configPath)
-	if err != nil {
-		return err
-	}
-
-	extractor := &Extractor{
-		store:   s,
-		config:  config,
-		outPath: outPath,
-	}
-
-	return extractor.Run()
-}
-
 func (s *Store) GetConfig(key string) (string, error) {
 	n, err := s.db.Get(s.ro, []byte(fmt.Sprintf("config/%s", key)))
 	if err != nil {
