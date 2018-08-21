@@ -35,7 +35,7 @@ type GeometryPipeline struct {
 func NewGeometryPipeline(e *Env) *GeometryPipeline {
 	return &GeometryPipeline{
 		env:    e,
-		Timing: servertiming.New(),
+		Timing: servertiming.New().EnablePrefix(),
 	}
 }
 
@@ -153,7 +153,7 @@ func (p *GeometryPipeline) Run() (*topojson.Topology, error) {
 
 	// Do pre-simplification without quantization when clipping
 	// water
-	simplified := make(chan *geojson.FeatureCollection)
+	simplified := make(chan *geojson.FeatureCollection, 1)
 	maxErr := float64(0)
 	if p.simplify > 0 {
 		maxErr = math.Pow(10, float64(-p.simplify))
@@ -171,18 +171,20 @@ func (p *GeometryPipeline) Run() (*topojson.Topology, error) {
 		}
 
 		if p.simplify > 0 && p.clipwater {
+			p.Timing.Start("pre-simplify", "Pre-clipping simplification")
 			topo := topojson.NewTopology(fc, &topojson.TopologyOptions{
 				Simplify:   maxErr,
 				IDProperty: "id",
 			})
 			simplified <- topo.ToGeoJSON()
+			p.Timing.Stop("pre-simplify")
 		} else {
 			simplified <- fc
 		}
 		return nil
 	})
 
-	clipped := make(chan *geojson.FeatureCollection)
+	clipped := make(chan *geojson.FeatureCollection, 1)
 	g.Go(func() error {
 		defer close(clipped)
 		in := <-simplified
@@ -241,11 +243,14 @@ func (p *GeometryPipeline) Run() (*topojson.Topology, error) {
 	quantized := make(chan *topojson.Topology, 1)
 	g.Go(func() error {
 		defer close(quantized)
-		topo := topojson.NewTopology(<-clipped, &topojson.TopologyOptions{
+		fc := <-clipped
+		p.Timing.Start("post-simplify", "Post-clipping simplification")
+		topo := topojson.NewTopology(fc, &topojson.TopologyOptions{
 			PostQuantize: p.quantize,
 			Simplify:     maxErr,
 			IDProperty:   "id",
 		})
+		p.Timing.Stop("post-simplify")
 		quantized <- topo
 		return nil
 	})
