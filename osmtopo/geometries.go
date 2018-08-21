@@ -9,6 +9,7 @@ import (
 	geojson "github.com/paulmach/go.geojson"
 	"github.com/paulsmith/gogeos/geos"
 	"github.com/rubenv/osmtopo/osmtopo/model"
+	"github.com/rubenv/servertiming"
 	"github.com/rubenv/topojson"
 	"golang.org/x/sync/errgroup"
 )
@@ -27,11 +28,14 @@ type GeometryPipeline struct {
 	quantize  float64
 	clipwater bool
 	accept    RelationFilterFunc
+
+	Timing *servertiming.Timing
 }
 
 func NewGeometryPipeline(e *Env) *GeometryPipeline {
 	return &GeometryPipeline{
-		env: e,
+		env:    e,
+		Timing: servertiming.New(),
 	}
 }
 
@@ -66,6 +70,7 @@ func (p *GeometryPipeline) Run() (*topojson.Topology, error) {
 	// Load and pre-simplify geometries
 	relations := make(chan *model.Relation, 100)
 	geometries := make(chan *geojson.Feature, 100)
+	p.Timing.Start("load", "Load geometries")
 	if p.id == 0 {
 		g.Go(func() error {
 			defer close(relations)
@@ -142,6 +147,7 @@ func (p *GeometryPipeline) Run() (*topojson.Topology, error) {
 	g.Go(func() error {
 		geomWg.Wait()
 		close(geometries)
+		p.Timing.Stop("load")
 		return nil
 	})
 
@@ -178,6 +184,7 @@ func (p *GeometryPipeline) Run() (*topojson.Topology, error) {
 
 	clipped := make(chan *geojson.FeatureCollection)
 	g.Go(func() error {
+		defer close(clipped)
 		in := <-simplified
 
 		if !p.clipwater {
@@ -185,10 +192,15 @@ func (p *GeometryPipeline) Run() (*topojson.Topology, error) {
 			return nil
 		}
 
+		p.Timing.Start("loadwater", "Load water")
 		clipGeos, err := p.env.loadWaterClipGeos(maxErr)
 		if err != nil {
 			return err
 		}
+		p.Timing.Stop("loadwater")
+
+		p.Timing.Start("clip", "Clip water")
+		defer p.Timing.Stop("clip")
 
 		out := geojson.NewFeatureCollection()
 		for _, feat := range in.Features {

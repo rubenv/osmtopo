@@ -14,6 +14,7 @@ import (
 	"github.com/gobuffalo/packr"
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/rubenv/osmtopo/osmtopo/model"
+	"github.com/rubenv/servertiming"
 	"github.com/rubenv/topojson"
 	"github.com/tecbot/gorocksdb"
 )
@@ -263,11 +264,11 @@ func (e *Env) loadTopologies() error {
 	return nil
 }
 
-func (e *Env) getTopology(layerID string, id int64) (*topojson.Topology, error) {
+func (e *Env) getTopology(layerID string, id int64) (*topojson.Topology, *servertiming.Timing, error) {
 	key := fmt.Sprintf("%s-%d", layerID, id)
 	t, ok := e.topoCache.Get(key)
 	if ok {
-		return t.(*topojson.Topology), nil
+		return t.(*topojson.Topology), nil, nil
 	}
 
 	var layer Layer
@@ -279,7 +280,7 @@ func (e *Env) getTopology(layerID string, id int64) (*topojson.Topology, error) 
 		}
 	}
 	if !found {
-		return nil, fmt.Errorf("Unknown layer: %s", layerID)
+		return nil, nil, fmt.Errorf("Unknown layer: %s", layerID)
 	}
 
 	pipe := NewGeometryPipeline(e).
@@ -290,11 +291,11 @@ func (e *Env) getTopology(layerID string, id int64) (*topojson.Topology, error) 
 
 	topo, err := pipe.Run()
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	e.topoCache.Add(key, topo)
-	return topo, nil
+	return topo, pipe.Timing, nil
 }
 
 func (e *Env) handleStatus(w http.ResponseWriter, req *http.Request) {
@@ -341,10 +342,14 @@ func (e *Env) handleTopo(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	topo, err := e.getTopology(parts[3], id)
+	topo, timing, err := e.getTopology(parts[3], id)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
+	}
+
+	if timing != nil {
+		w.Header().Set("Server-Timing", timing.String())
 	}
 
 	err = json.NewEncoder(w).Encode(topo)
