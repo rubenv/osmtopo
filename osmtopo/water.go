@@ -49,6 +49,10 @@ func (e *Env) updateWater() error {
 		return err
 	}
 
+	e.waterLock.Lock()
+	e.waterClipGeos = make(map[string][]*clipGeometry)
+	e.waterLock.Unlock()
+
 	e.log("water", "Done")
 	return e.setTimestamp("water", time.Now())
 }
@@ -225,6 +229,15 @@ func (e *Env) processWaterPolygon(id int64, poly *shp.Polygon) (*model.Geometry,
 }
 
 func (e *Env) loadWaterClipGeos(maxErr float64) ([]*clipGeometry, error) {
+	e.waterLock.Lock()
+	defer e.waterLock.Unlock()
+
+	key := fmt.Sprintf("%f", maxErr)
+	cg, ok := e.waterClipGeos[key]
+	if ok {
+		return cg, nil
+	}
+
 	// Load water geometries
 	keys, err := e.GetGeometries("water")
 	if err != nil {
@@ -278,5 +291,6 @@ func (e *Env) loadWaterClipGeos(maxErr float64) ([]*clipGeometry, error) {
 		})
 	}
 
+	e.waterClipGeos[key] = clipGeos
 	return clipGeos, nil
 }

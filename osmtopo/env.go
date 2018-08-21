@@ -38,6 +38,9 @@ type Env struct {
 	topoData  *TopologyData
 	topoCache *lru.Cache
 
+	waterLock     sync.Mutex
+	waterClipGeos map[string][]*clipGeometry
+
 	Status Status
 }
 
@@ -70,6 +73,7 @@ func NewEnv(config *Config, topologiesFile, storePath string) (*Env, error) {
 		topologiesFile: topologiesFile,
 		storePath:      storePath,
 		topoCache:      cache,
+		waterClipGeos:  make(map[string][]*clipGeometry),
 	}
 	err = env.openStore()
 	if err != nil {
