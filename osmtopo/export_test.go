@@ -19,6 +19,7 @@ func TestExport(t *testing.T) {
 	config := NewConfig()
 	config.Water = "fixtures/geodata/water-cropped.zip"
 	config.Sources = map[string]PBFSource{
+		// The Isle of Man is ideal: small file size, water, regional subdivisions
 		"man": PBFSource{
 			Seed: "fixtures/geodata/isle-of-man-latest.osm.pbf",
 		},
@@ -44,8 +45,7 @@ func TestExport(t *testing.T) {
 
 	topologiesFile := path.Join(folder, "topo.yaml")
 	storePath := path.Join(folder, "store")
-	//outputPath := path.Join(folder, "output")
-	outputPath := "/tmp/man"
+	outputPath := path.Join(folder, "output")
 
 	topologies := &TopologyData{
 		Layers: map[string]IDSlice{

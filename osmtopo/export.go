@@ -90,12 +90,19 @@ func (e *Env) export() error {
 				pointCount += countPoints(topo, topo.Objects[key])
 			}
 
+			// Filter topology
+			filtered := topo.Filter(toSelect)
+			// Remove bounding boxes, not needed
+			for _, obj := range filtered.Objects {
+				obj.BoundingBox = nil
+			}
+
+			// Write it
 			fp, err := os.Create(path.Join(e.outputPath, layer.ID, fmt.Sprintf("%d.topojson", slice)))
 			if err != nil {
 				return err
 			}
 
-			filtered := topo.Filter(toSelect)
 			err = json.NewEncoder(fp).Encode(filtered)
 			if err != nil {
 				fp.Close()
