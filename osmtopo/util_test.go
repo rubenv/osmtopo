@@ -11,7 +11,7 @@ import (
 func TestRoundTripPolygon(t *testing.T) {
 	is := is.New(t)
 
-	in := `{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,1],[0,0]]]}`
+	in := `{"type":"Polygon","bbox":[0,0,1,1],"coordinates":[[[0,0],[1,0],[1,1],[0,1],[0,0]]]}`
 
 	g := &geojson.Geometry{}
 	err := json.Unmarshal([]byte(in), g)
@@ -28,7 +28,7 @@ func TestRoundTripPolygon(t *testing.T) {
 	j2, err := json.Marshal(g2)
 	is.NoErr(err)
 	is.NotNil(j2)
-	is.Equal(in, j2)
+	is.Equal(in, string(j2))
 }
 
 /*

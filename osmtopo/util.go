@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"path"
 	"strings"
@@ -14,11 +15,61 @@ import (
 	"github.com/paulsmith/gogeos/geos"
 )
 
+type boundingBox []float64
+
+func newBoundingBox() boundingBox {
+	return boundingBox{
+		math.MaxFloat64,
+		math.MaxFloat64,
+		-math.MaxFloat64,
+		-math.MaxFloat64,
+	}
+}
+
+func (b boundingBox) bound(p []float64) {
+	x := p[0]
+	y := p[1]
+
+	if x < b[0] {
+		b[0] = x
+	}
+	if x > b[2] {
+		b[2] = x
+	}
+	if y < b[1] {
+		b[1] = y
+	}
+	if y > b[3] {
+		b[3] = y
+	}
+}
+
+func (b boundingBox) boundPoints(l [][]float64) {
+	for _, p := range l {
+		b.bound(p)
+	}
+}
+
+func (b boundingBox) boundMulti(ml [][][]float64) {
+	for _, l := range ml {
+		for _, p := range l {
+			b.bound(p)
+		}
+	}
+}
+
+func (b boundingBox) extend(bb boundingBox) {
+	b.bound([]float64{bb[0], bb[1]})
+	b.bound([]float64{bb[2], bb[3]})
+}
+
 func GeometryFromGeos(geom *geos.Geometry) (*geojson.Geometry, error) {
 	t, err := geom.Type()
 	if err != nil {
 		return nil, err
 	}
+
+	bb := newBoundingBox()
 
 	switch t {
 	case geos.GEOMETRYCOLLECTION:
@@ -40,17 +91,21 @@ func GeometryFromGeos(geom *geos.Geometry) (*geojson.Geometry, error) {
 			}
 
 			geometries[i] = f
+			bb.extend(f.BoundingBox)
 		}
 
 		gc := geojson.NewCollectionGeometry(geometries...)
+		gc.BoundingBox = bb
 		return gc, nil
 	case geos.POLYGON:
 		rings, err := polyToRings(geom)
 		if err != nil {
 			return nil, err
 		}
+		bb.boundMulti(rings)
 
 		p := geojson.NewPolygonGeometry(rings)
+		p.BoundingBox = bb
 		return p, nil
 	case geos.MULTIPOLYGON:
 		c, err := geom.NGeometry()
@@ -72,9 +127,11 @@ func GeometryFromGeos(geom *geos.Geometry) (*geojson.Geometry, error) {
 			}
 
 			rings[i] = r
+			bb.boundMulti(r)
 		}
 
 		p := geojson.NewMultiPolygonGeometry(rings...)
+		p.BoundingBox = bb
 		return p, nil
 	default:
 		return nil, fmt.Errorf("Unknown geometry type: %v", t)
