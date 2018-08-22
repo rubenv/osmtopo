@@ -42,6 +42,7 @@ func TestExport(t *testing.T) {
 		},
 	}
 	config.ExportPointLimit = 1000
+	config.Languages = []string{"en", "nl", "fr"}
 
 	topologiesFile := path.Join(folder, "topo.yaml")
 	storePath := path.Join(folder, "store")

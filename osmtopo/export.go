@@ -39,6 +39,7 @@ func (e *Env) export() error {
 			}).
 			Simplify(layer.Simplify).
 			ClipWater().
+			WithNames(e.config.Languages).
 			Quantize(1e6)
 
 		topo, err := pipe.Run()

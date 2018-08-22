@@ -28,6 +28,7 @@ type GeometryPipeline struct {
 	quantize  float64
 	clipwater bool
 	accept    RelationFilterFunc
+	languages []string
 
 	Timing *servertiming.Timing
 }
@@ -51,6 +52,11 @@ func (p *GeometryPipeline) Simplify(simplify int) *GeometryPipeline {
 
 func (p *GeometryPipeline) Quantize(quantize float64) *GeometryPipeline {
 	p.quantize = quantize
+	return p
+}
+
+func (p *GeometryPipeline) WithNames(languages []string) *GeometryPipeline {
+	p.languages = languages
 	return p
 }
 
@@ -141,6 +147,24 @@ func (p *GeometryPipeline) Run() (*topojson.Topology, error) {
 				out := geojson.NewFeature(geom)
 				out.SetProperty("id", fmt.Sprintf("%d", rel.Id))
 				out.BoundingBox = geom.BoundingBox
+
+				// Copy names
+				if v, ok := rel.GetTag("name"); ok {
+					out.SetProperty("name", v)
+				}
+				for _, lang := range p.languages {
+					k := fmt.Sprintf("name:%s", lang)
+					if v, ok := rel.GetTag(k); ok {
+						if lang == "en" {
+							l, err := out.PropertyString("name")
+							if err == nil && l == v {
+								continue
+							}
+						}
+						out.SetProperty(k, v)
+					}
+				}
+
 				geometries <- out
 			}
 		})

@@ -29,6 +29,9 @@ type Config struct {
 	// Blacklist features
 	Blacklist []int64 `yaml:"blacklist" json:"blacklist"`
 
+	// Languages to extract (names, 2-letter codes)
+	Languages []string `yaml:"languages" json:"languages"`
+
 	// **** Bits below usually don't need to be set ****
 
 	// Update interval in seconds, defaults to every 4 weeks
@@ -76,5 +79,6 @@ func NewConfig() *Config {
 		Water:            DefaultWaterPolygons,
 		UpdateWaterEvery: int64(DefaultWaterUpdate.Seconds()),
 		ExportPointLimit: DefaultExportPointLimit,
+		Languages:        []string{"en"},
 	}
 }
