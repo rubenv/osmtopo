@@ -13,8 +13,6 @@ type GlobalOptions struct {
 	Config     string `short:"c" long:"config" description:"Config file path" required:"true"`
 	Topologies string `short:"t" long:"topologies" description:"Topologies mapping path" required:"true"`
 	OutputPath string `short:"o" long:"output" description:"Topologies output folder" required:"true"`
-
-	NoUpdate bool `short:"n" long:"no-update" description:"Don't update data"`
 }
 
 var globalOpts = GlobalOptions{}
@@ -33,10 +31,6 @@ func (g *GlobalOptions) NewEnv() (*osmtopo.Env, error) {
 	config, err := osmtopo.ReadConfig(g.Config)
 	if err != nil {
 		return nil, err
-	}
-
-	if g.NoUpdate {
-		config.NoUpdate = true
 	}
 
 	env, err := osmtopo.NewEnv(config, g.Topologies, g.DataStore, g.OutputPath)
