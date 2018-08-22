@@ -140,6 +140,7 @@ func (p *GeometryPipeline) Run() (*topojson.Topology, error) {
 
 				out := geojson.NewFeature(geom)
 				out.SetProperty("id", fmt.Sprintf("%d", rel.Id))
+				out.BoundingBox = geom.BoundingBox
 				geometries <- out
 			}
 		})

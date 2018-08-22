@@ -24,6 +24,8 @@ type Env struct {
 	cf   context.CancelFunc
 	done sync.WaitGroup
 
+	initialized sync.WaitGroup
+
 	config         *Config
 	topologiesFile string
 	storePath      string
@@ -84,10 +86,9 @@ func NewEnv(config *Config, topologiesFile, storePath, outputPath string) (*Env,
 
 	env.Status.Config = config
 
-	if !config.NoUpdate {
-		env.done.Add(1)
-		go env.runUpdater()
-	}
+	env.done.Add(1)
+	env.initialized.Add(1)
+	go env.runUpdater()
 
 	err = env.loadTopologies()
 	if err != nil {
@@ -156,7 +157,10 @@ func (e *Env) runUpdater() {
 		if err != nil {
 			e.log("updater", "Failed: %s", err)
 		} else {
-			e.Status.Initialized = true
+			if !e.Status.Initialized {
+				e.initialized.Done()
+				e.Status.Initialized = true
+			}
 		}
 
 		e.Status.Running = false
@@ -202,6 +206,16 @@ func (e *Env) updateData() error {
 		}
 	}
 
+	// Refresh lookup
+	err = e.loadLookup()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (e *Env) loadLookup() error {
 	lookup := newLookupData()
 	for _, layer := range e.config.Layers {
 		levelNeeded := make(map[int]bool)

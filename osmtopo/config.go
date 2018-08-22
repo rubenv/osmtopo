@@ -11,6 +11,7 @@ import (
 const Day = 24 * time.Hour
 const DefaultWaterPolygons = "http://data.openstreetmapdata.com/water-polygons-split-4326.zip"
 const DefaultWaterUpdate = 4 * 7 * Day
+const DefaultExportPointLimit = 10000
 
 type Config struct {
 	// Where to download water polygons
@@ -30,11 +31,11 @@ type Config struct {
 
 	// **** Bits below usually don't need to be set ****
 
-	// Don't update data sources
-	NoUpdate bool `yaml:"no_update" json:"no_update"`
-
 	// Update interval in seconds, defaults to every 4 weeks
 	UpdateWaterEvery int64 `yaml:"update_water_every" json:"update_water_every"`
+
+	// Target number of points in generated topojson files
+	ExportPointLimit int `yaml:"export_point_limit" json:"export_point_limit"`
 }
 
 type PBFSource struct {
@@ -74,5 +75,6 @@ func NewConfig() *Config {
 	return &Config{
 		Water:            DefaultWaterPolygons,
 		UpdateWaterEvery: int64(DefaultWaterUpdate.Seconds()),
+		ExportPointLimit: DefaultExportPointLimit,
 	}
 }

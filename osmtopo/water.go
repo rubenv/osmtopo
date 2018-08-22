@@ -38,12 +38,16 @@ func (e *Env) updateWater() error {
 	}
 	defer os.RemoveAll(tmp)
 
-	err = e.downloadWater(tmp, "water.zip")
-	if err != nil {
-		return err
+	filename := path.Join(tmp, "water.zip")
+	if strings.HasPrefix(e.config.Water, "http://") || strings.HasPrefix(e.config.Water, "https://") {
+		err = e.downloadWater(tmp, "water.zip")
+		if err != nil {
+			return err
+		}
+	} else {
+		filename = e.config.Water
 	}
 
-	filename := path.Join(tmp, "water.zip")
 	err = e.importWater(filename, tmp)
 	if err != nil {
 		return err
@@ -60,7 +64,7 @@ func (e *Env) updateWater() error {
 func (e *Env) downloadWater(folder, filename string) error {
 	e.log("water", "Downloading water data")
 	buf := make([]byte, 2*1024*1024)
-	url := "http://data.openstreetmapdata.com/water-polygons-split-4326.zip"
+	url := e.config.Water
 	_, err := ctxdownload.Download(e.ctx, url, folder, filename, buf, 3600)
 	return err
 }
