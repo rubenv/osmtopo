@@ -149,10 +149,10 @@ func (l *layer) indexPolygon(id int64, poly [][][]float64) error {
 }
 
 // Look up all shapes that contain a given point, in a given layer
-func (l *Data) Query(lat, lng float64, layerID string) ([]int64, error) {
+func (l *Data) Query(lat, lng float64, layerID string) []int64 {
 	layer, ok := l.layers[layerID]
 	if !ok {
-		return nil, nil
+		return nil
 	}
 
 	cell := s2.CellIDFromLatLng(s2.LatLngFromDegrees(lat, lng))
@@ -172,5 +172,5 @@ func (l *Data) Query(lat, lng float64, layerID string) ([]int64, error) {
 		}
 	}
 
-	return matches, nil
+	return matches
 }

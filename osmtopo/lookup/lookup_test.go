@@ -23,8 +23,7 @@ func TestLookup(t *testing.T) {
 	err = l.IndexGeometry("test", 291667, geom)
 	is.NoErr(err)
 
-	matches, err := l.Query(51.080501556396484, 4.464809894561768, "test")
-	is.NoErr(err)
+	matches := l.Query(51.080501556396484, 4.464809894561768, "test")
 	is.Equal(len(matches), 0)
 }
 
