@@ -1,11 +1,17 @@
 package osmtopo
 
 import (
+	"archive/tar"
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
+	"os"
+	"path"
 	"strconv"
 	"strings"
 	"sync"
@@ -123,6 +129,7 @@ func (e *Env) StartServer(listen string) error {
 	mux.Handle("/api/add", http.HandlerFunc(e.handleAdd))
 	mux.Handle("/api/delete", http.HandlerFunc(e.handleDelete))
 	mux.Handle("/api/export", http.HandlerFunc(e.handleExport))
+	mux.Handle("/api/topologies", http.HandlerFunc(e.handleExportTopologies))
 	mux.Handle("/", http.FileServer(packr.NewBox("../frontend/build")))
 
 	s := &http.Server{
@@ -471,4 +478,86 @@ func (e *Env) handleExport(w http.ResponseWriter, req *http.Request) {
 	}
 
 	go e.runExporter()
+}
+
+func (e *Env) handleExportTopologies(w http.ResponseWriter, req *http.Request) {
+	if e.Status.Export.Running {
+		http.Error(w, "Export is currently running", http.StatusBadRequest)
+		return
+	}
+	if e.Status.Export.Error != "" {
+		http.Error(w, fmt.Sprintf("Export failed: %d", e.Status.Export.Error), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/gzip")
+	gz := gzip.NewWriter(w)
+	defer gz.Close()
+
+	tw := tar.NewWriter(gz)
+	defer tw.Close()
+
+	writeErrorFile := func(err error) {
+		str := fmt.Sprintf("Archive failed: %s", err)
+		tw.WriteHeader(&tar.Header{
+			Name: "error",
+			Mode: 0600,
+			Size: int64(len(str)),
+		})
+		tw.Write([]byte(str))
+	}
+
+	copyFile := func(filename string) error {
+		fp, err := os.Open(filename)
+		if err != nil {
+			return err
+		}
+		defer fp.Close()
+
+		_, err = io.Copy(tw, fp)
+		return err
+	}
+
+	levels, err := ioutil.ReadDir(e.outputPath)
+	if err != nil {
+		writeErrorFile(err)
+		return
+	}
+
+	for _, level := range levels {
+		if !level.IsDir() || strings.HasPrefix(level.Name(), ".") {
+			continue
+		}
+
+		folder := path.Join(e.outputPath, level.Name())
+
+		files, err := ioutil.ReadDir(folder)
+		if err != nil {
+			writeErrorFile(err)
+			return
+		}
+
+		for _, file := range files {
+			filename := path.Join(folder, file.Name())
+			if !strings.HasSuffix(filename, ".topojson") {
+				continue
+			}
+
+			err = tw.WriteHeader(&tar.Header{
+				Name: fmt.Sprintf("%s/%s", level.Name(), file.Name()),
+				Mode: 0600,
+				Size: file.Size(),
+			})
+			if err != nil {
+				writeErrorFile(err)
+				return
+			}
+
+			err = copyFile(filename)
+			if err != nil {
+				writeErrorFile(err)
+				return
+			}
+		}
+	}
 }
