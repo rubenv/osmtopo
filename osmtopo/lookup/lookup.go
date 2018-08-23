@@ -9,7 +9,7 @@ import (
 
 	"github.com/golang/geo/s2"
 	geojson "github.com/paulmach/go.geojson"
-	segtree "github.com/rubenv/go-segtree"
+	"github.com/rubenv/osmtopo/osmtopo/lookup/segtree"
 	"github.com/rubenv/topojson"
 )
 
