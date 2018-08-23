@@ -240,6 +240,12 @@ func (e *Env) loadLookup() error {
 			return err
 		}
 	}
+
+	err := lookup.Build()
+	if err != nil {
+		return err
+	}
+
 	e.lookup = lookup
 
 	return nil
@@ -280,6 +286,12 @@ func (e *Env) loadTopologies() error {
 			return err
 		}
 	}
+
+	err = lookup.Build()
+	if err != nil {
+		return err
+	}
+
 	e.topologies = lookup
 
 	return nil
