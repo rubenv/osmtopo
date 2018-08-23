@@ -3,7 +3,6 @@ package lookup
 import (
 	"fmt"
 	"strconv"
-	"sync"
 
 	"github.com/Workiva/go-datastructures/augmentedtree"
 	"github.com/golang/geo/s2"
@@ -12,8 +11,7 @@ import (
 )
 
 type Data struct {
-	layers    map[string]*layer
-	layerLock sync.Mutex
+	layers map[string]*layer
 }
 
 type layer struct {
@@ -142,9 +140,7 @@ func (l *layer) indexPolygon(id int64, poly [][][]float64) error {
 }
 
 func (l *Data) Query(lat, lng float64, layerID string) ([]int64, error) {
-	l.layerLock.Lock()
 	layer, ok := l.layers[layerID]
-	l.layerLock.Unlock()
 	if !ok {
 		return nil, nil
 	}
