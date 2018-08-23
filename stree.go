@@ -5,14 +5,15 @@ package segtree
 
 import (
 	"errors"
+	"math"
 	"sort"
 )
 
 const (
 	// Inf is defined as the max value of an integer, used as +∞
-	Inf = int(^uint(0) >> 1)
+	Inf = math.MaxUint64
 	// NegInf is defined as the min value of an integer, used as -∞
-	NegInf = -Inf - 1
+	NegInf = 0
 )
 
 type interval struct {
@@ -21,8 +22,8 @@ type interval struct {
 }
 
 type segment struct {
-	from int
-	to   int
+	from uint64
+	to   uint64
 }
 
 type node struct {
@@ -38,7 +39,7 @@ type Tree struct {
 }
 
 // Push pushes an interval to the interval stack
-func (t *Tree) Push(from, to int, element interface{}) {
+func (t *Tree) Push(from, to uint64, element interface{}) {
 	if to < from {
 		from, to = to, from
 	}
@@ -72,8 +73,8 @@ func (t *Tree) BuildTree() error {
 }
 
 // Removes duplicate entries from a sorted slice
-func removedups(sorted []int) (unique []int) {
-	unique = make([]int, 0, len(sorted))
+func removedups(sorted []uint64) (unique []uint64) {
+	unique = make([]uint64, 0, len(sorted))
 	unique = append(unique, sorted[0])
 	prev := sorted[0]
 	for _, val := range sorted[1:] {
@@ -86,9 +87,9 @@ func removedups(sorted []int) (unique []int) {
 }
 
 // Creates a sorted slice of unique endpoints from a tree's base
-func (t *Tree) endpoints() []int {
+func (t *Tree) endpoints() []uint64 {
 	baseLen := len(t.base)
-	endpoints := make([]int, baseLen*2)
+	endpoints := make([]uint64, baseLen*2)
 
 	// When there are a lot of intervals, there is a big chance of big overlaps
 	// Try to have the endpoints sorted as much as possible when putting them
@@ -100,7 +101,7 @@ func (t *Tree) endpoints() []int {
 	}
 	// endpoints[baseLen*2+1] = Inf
 
-	sort.Sort(sort.IntSlice(endpoints))
+	sort.Sort(Uint64Slice(endpoints))
 
 	return removedups(endpoints)
 }
@@ -108,7 +109,7 @@ func (t *Tree) endpoints() []int {
 // Creates a slice of elementary intervals from a slice of (sorted) endpoints
 // Input: [p1, p2, ..., pn]
 // Output: [{p1 : p1}, {p1 : p2}, {p2 : p2},... , {pn : pn}
-func elementaryIntervals(endpoints []int) []segment {
+func elementaryIntervals(endpoints []uint64) []segment {
 	if len(endpoints) == 1 {
 		return []segment{segment{endpoints[0], endpoints[0]}}
 	}
@@ -171,14 +172,14 @@ func (n *node) insertInterval(i *interval) {
 // a given index. The elements associated with the segments will be sent
 // on the returned channel. No element will be sent twice.
 // The elements will not be sent in any specific order.
-func (t *Tree) QueryIndex(index int) (<-chan interface{}, error) {
+func (t *Tree) QueryIndex(index uint64) (<-chan interface{}, error) {
 	if t.root == nil {
 		return nil, errors.New("Tree is empty. Build the tree first")
 	}
 
 	intervals := make(chan *interval)
 
-	go func(t *Tree, index int, intervals chan *interval) {
+	go func(t *Tree, index uint64, intervals chan *interval) {
 		query(t.root, index, intervals)
 		close(intervals)
 	}(t, index, intervals)
@@ -206,11 +207,11 @@ func (t *Tree) QueryIndex(index int) (<-chan interface{}, error) {
 	return elements, nil
 }
 
-func (s segment) contains(index int) bool {
+func (s segment) contains(index uint64) bool {
 	return s.from <= index && index <= s.to
 }
 
-func query(node *node, index int, results chan<- *interval) {
+func query(node *node, index uint64, results chan<- *interval) {
 	if node.segment.contains(index) {
 		for _, interval := range node.intervals {
 			results <- interval

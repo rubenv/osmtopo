@@ -87,7 +87,7 @@ func TestFindingMultipleElements(t *testing.T) {
 	tests[4] = "stuff"
 
 	for i, test := range tests {
-		tree.Push(10+i, 100+i, test)
+		tree.Push(uint64(10+i), uint64(100+i), test)
 	}
 
 	tree.BuildTree()
