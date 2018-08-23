@@ -19,7 +19,7 @@ func TestFindingSingleElement(t *testing.T) {
 		wrongElement(t, result, test)
 	}
 
-	if _, ok := <-results; ok != false {
+	if _, ok := <-results; ok {
 		toManyElements(t)
 	}
 }
@@ -41,7 +41,7 @@ func TestFindingElementSizeZeroRange(t *testing.T) {
 		wrongElement(t, result, test)
 	}
 
-	if _, ok := <-results; ok != false {
+	if _, ok := <-results; ok {
 		toManyElements(t)
 	}
 }
@@ -63,7 +63,7 @@ func TestFindingElementPseudoEndlessRange(t *testing.T) {
 		wrongElement(t, result, test)
 	}
 
-	if _, ok := <-results; ok != false {
+	if _, ok := <-results; ok {
 		toManyElements(t)
 	}
 }
@@ -112,8 +112,8 @@ func TestFindingMultipleElements(t *testing.T) {
 		}
 	}
 
-	if _, ok := <-results; ok != false {
-
+	if _, ok := <-results; ok {
+		toManyElements(t)
 	}
 }
 
@@ -137,7 +137,7 @@ func TestFindingOverlappingElements(t *testing.T) {
 		wrongElement(t, result, tests[0])
 	}
 
-	if _, ok := <-results; ok != false {
+	if _, ok := <-results; ok {
 		toManyElements(t)
 	}
 
@@ -152,7 +152,7 @@ func TestFindingOverlappingElements(t *testing.T) {
 		wrongElement(t, result, tests[1])
 	}
 
-	if _, ok := <-results; ok != false {
+	if _, ok := <-results; ok {
 		toManyElements(t)
 	}
 
@@ -178,7 +178,7 @@ func TestFindingOverlappingElements(t *testing.T) {
 		}
 	}
 
-	if _, ok := <-results; ok != false {
+	if _, ok := <-results; ok {
 		toManyElements(t)
 	}
 }
@@ -196,7 +196,7 @@ func TestOutOfRangeNotFound(t *testing.T) {
 		queryFailed(t, err)
 	}
 
-	if result, ok := <-results; ok != false {
+	if result, ok := <-results; ok {
 		receivedUnexpected(t, result)
 	}
 }
@@ -240,7 +240,7 @@ func TestFindingSameElementTwice(t *testing.T) {
 	}
 
 	// `test` should only be sent once
-	if _, ok := <-results; ok != false {
+	if _, ok := <-results; ok {
 		toManyElements(t)
 	}
 }
