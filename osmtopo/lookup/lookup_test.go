@@ -2,11 +2,13 @@ package lookup
 
 import (
 	"encoding/json"
+	"os"
 	"testing"
 
 	"github.com/cheekybits/is"
 	"github.com/golang/geo/s2"
 	geojson "github.com/paulmach/go.geojson"
+	"github.com/rubenv/topojson"
 )
 
 // Has a duplicated point, which causes all sorts of trouble if we don't filter them out
@@ -43,4 +45,24 @@ func TestLoops(t *testing.T) {
 	outer := makeLoop(geom.Polygon[0])
 	is.NoErr(outer.Validate())
 	is.False(outer.ContainsPoint(point))
+}
+
+func TestLookupCities(t *testing.T) {
+	is := is.New(t)
+
+	fp, err := os.Open("fixtures/cities.topojson")
+	is.NoErr(err)
+	defer fp.Close()
+
+	topo := &topojson.Topology{}
+	err = json.NewDecoder(fp).Decode(topo)
+	is.NoErr(err)
+
+	l := New()
+	err = l.IndexTopology("cities", topo)
+	is.NoErr(err)
+
+	ids := l.Query(54.1504053, -4.4776897, "cities")
+	is.Equal(len(ids), 1)
+	is.Equal(1061138, ids[0])
 }
