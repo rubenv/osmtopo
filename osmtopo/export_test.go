@@ -80,10 +80,10 @@ func TestExport(t *testing.T) {
 	err = env.export()
 	is.NoErr(err)
 
-	isFile(is, path.Join(outputPath, "countries/0.topojson"))
-	isFile(is, path.Join(outputPath, "regions/0.topojson"))
-	isFile(is, path.Join(outputPath, "cities/0.topojson"))
-	isFile(is, path.Join(outputPath, "cities/1.topojson"))
+	isFile(is, path.Join(outputPath, "countries/0000.topojson"))
+	isFile(is, path.Join(outputPath, "regions/0000.topojson"))
+	isFile(is, path.Join(outputPath, "cities/0000.topojson"))
+	isFile(is, path.Join(outputPath, "cities/0001.topojson"))
 }
 
 func isFile(is is.I, path string) {

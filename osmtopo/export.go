@@ -99,7 +99,7 @@ func (e *Env) export() error {
 			}
 
 			// Write it
-			fp, err := os.Create(path.Join(e.outputPath, layer.ID, fmt.Sprintf("%d.topojson", slice)))
+			fp, err := os.Create(path.Join(e.outputPath, layer.ID, fmt.Sprintf("%04d.topojson", slice)))
 			if err != nil {
 				return err
 			}
