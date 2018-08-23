@@ -1,3 +1,6 @@
+// Index structure for multi-layered indexing of spacial topologies.
+//
+// Or in easier terms: index a bunch of shapes, then ask: "in which shapes does this point fall?".
 package lookup
 
 import (
@@ -26,6 +29,9 @@ func New() *Data {
 	}
 }
 
+// Index a geometry into a given level
+//
+// Note that concurrency is not supported! You should always index all data prior to doing any querying.
 func (l *Data) IndexGeometry(layerID string, id int64, geom *geojson.Geometry) error {
 	layer, ok := l.layers[layerID]
 	if !ok {
@@ -51,6 +57,9 @@ func (l *Data) IndexGeometry(layerID string, id int64, geom *geojson.Geometry) e
 	return nil
 }
 
+// Index all geometries of a topology into a given level
+//
+// Note that concurrency is not supported! You should always index all data prior to doing any querying.
 func (l *Data) IndexTopology(layerID string, topo *topojson.Topology) error {
 	fc := topo.ToGeoJSON()
 	for _, feat := range fc.Features {
@@ -139,6 +148,7 @@ func (l *layer) indexPolygon(id int64, poly [][][]float64) error {
 	return nil
 }
 
+// Look up all shapes that contain a given point, in a given layer
 func (l *Data) Query(lat, lng float64, layerID string) ([]int64, error) {
 	layer, ok := l.layers[layerID]
 	if !ok {
