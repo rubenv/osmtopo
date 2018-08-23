@@ -77,7 +77,3 @@ func MakePolygons(outerPolys, innerPolys []*geos.Geometry) (*geos.Geometry, erro
 
 	return feat, nil
 }
-
-func coordEquals(a, b []float64) bool {
-	return a[0] == b[0] && a[1] == b[1]
-}

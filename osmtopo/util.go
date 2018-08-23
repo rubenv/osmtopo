@@ -44,12 +44,6 @@ func (b boundingBox) bound(p []float64) {
 	}
 }
 
-func (b boundingBox) boundPoints(l [][]float64) {
-	for _, p := range l {
-		b.bound(p)
-	}
-}
-
 func (b boundingBox) boundMulti(ml [][][]float64) {
 	for _, l := range ml {
 		for _, p := range l {
