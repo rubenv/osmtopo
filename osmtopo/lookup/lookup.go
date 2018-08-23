@@ -116,26 +116,25 @@ func (l *layer) indexPolygon(id int64, poly [][][]float64) error {
 		inner: inner,
 	}
 
-	covering := rc.Covering(&Region{outer})
+	covering := rc.Covering(&region{outer})
 
 	// Find a pre-existing interval
 	for _, cell := range covering {
-		interval := &Interval{Cell: cell}
-		results := l.tree.Query(interval)
+		ival := &interval{Cell: cell}
+		results := l.tree.Query(ival)
 
 		added := false
 		for _, result := range results {
-			i := result.(*Interval)
-			if result.LowAtDimension(1) == interval.LowAtDimension(1) &&
-				result.HighAtDimension(1) == interval.HighAtDimension(1) {
+			i := result.(*interval)
+			if ival.EqualAtDimension(result, 1) {
 				i.Loops = append(i.Loops, loopId)
 				added = true
 			}
 		}
 
 		if !added {
-			interval.Loops = []int64{loopId}
-			l.tree.Add(interval)
+			ival.Loops = []int64{loopId}
+			l.tree.Add(ival)
 		}
 	}
 
@@ -151,12 +150,12 @@ func (l *Data) Query(lat, lng float64, layerID string) ([]int64, error) {
 	}
 
 	cell := s2.CellIDFromLatLng(s2.LatLngFromDegrees(lat, lng))
-	interval := &Interval{Cell: cell}
+	ival := &interval{Cell: cell}
 
 	matches := make([]int64, 0)
-	results := layer.tree.Query(interval)
+	results := layer.tree.Query(ival)
 	for _, r := range results {
-		result := r.(*Interval)
+		result := r.(*interval)
 		for _, loop := range result.Loops {
 			geomId := layer.loops[loop]
 			poly := layer.polygons[loop]
