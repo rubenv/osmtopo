@@ -13,6 +13,7 @@ import (
 
 	"github.com/gobuffalo/packr"
 	lru "github.com/hashicorp/golang-lru"
+	"github.com/rubenv/osmtopo/osmtopo/lookup"
 	"github.com/rubenv/osmtopo/osmtopo/model"
 	"github.com/rubenv/servertiming"
 	"github.com/rubenv/topojson"
@@ -35,8 +36,8 @@ type Env struct {
 	wo *gorocksdb.WriteOptions
 	ro *gorocksdb.ReadOptions
 
-	lookup     *lookupData
-	topologies *lookupData
+	lookup     *lookup.Data
+	topologies *lookup.Data
 
 	topoData  *TopologyData
 	topoCache *lru.Cache
@@ -216,7 +217,7 @@ func (e *Env) updateData() error {
 }
 
 func (e *Env) loadLookup() error {
-	lookup := newLookupData()
+	lookup := lookup.New()
 	for _, layer := range e.config.Layers {
 		levelNeeded := make(map[int]bool)
 		for _, admin := range layer.AdminLevels {
@@ -251,7 +252,7 @@ func (e *Env) loadTopologies() error {
 	}
 	e.topoData = topoData
 
-	lookup := newLookupData()
+	lookup := lookup.New()
 	for _, layer := range e.config.Layers {
 		ids, ok := e.topoData.Layers[layer.ID]
 		if !ok {

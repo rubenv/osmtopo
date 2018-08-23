@@ -1,4 +1,4 @@
-package osmtopo
+package lookup
 
 import (
 	"encoding/json"
@@ -19,7 +19,7 @@ func TestLookup(t *testing.T) {
 	err := json.Unmarshal([]byte(hoornGeoJson), geom)
 	is.NoErr(err)
 
-	l := newLookupData()
+	l := New()
 	err = l.IndexGeometry("test", 291667, geom)
 	is.NoErr(err)
 

@@ -1,4 +1,4 @@
-package osmtopo
+package lookup
 
 import (
 	"fmt"
@@ -11,27 +11,27 @@ import (
 	"github.com/rubenv/topojson"
 )
 
-type lookupData struct {
-	layers    map[string]*lookupLayer
+type Data struct {
+	layers    map[string]*layer
 	layerLock sync.Mutex
 }
 
-type lookupLayer struct {
+type layer struct {
 	tree     augmentedtree.Tree
 	loops    map[int64]int64
 	polygons map[int64]*loopPolygon
 }
 
-func newLookupData() *lookupData {
-	return &lookupData{
-		layers: make(map[string]*lookupLayer),
+func New() *Data {
+	return &Data{
+		layers: make(map[string]*layer),
 	}
 }
 
-func (l *lookupData) IndexGeometry(layerID string, id int64, geom *geojson.Geometry) error {
+func (l *Data) IndexGeometry(layerID string, id int64, geom *geojson.Geometry) error {
 	layer, ok := l.layers[layerID]
 	if !ok {
-		layer = newLookupLayer()
+		layer = newLayer()
 		l.layers[layerID] = layer
 	}
 
@@ -53,7 +53,7 @@ func (l *lookupData) IndexGeometry(layerID string, id int64, geom *geojson.Geome
 	return nil
 }
 
-func (l *lookupData) IndexTopology(layerID string, topo *topojson.Topology) error {
+func (l *Data) IndexTopology(layerID string, topo *topojson.Topology) error {
 	fc := topo.ToGeoJSON()
 	for _, feat := range fc.Features {
 		id, err := strconv.ParseInt(feat.ID.(string), 10, 64)
@@ -70,15 +70,15 @@ func (l *lookupData) IndexTopology(layerID string, topo *topojson.Topology) erro
 	return nil
 }
 
-func newLookupLayer() *lookupLayer {
-	return &lookupLayer{
+func newLayer() *layer {
+	return &layer{
 		polygons: make(map[int64]*loopPolygon),
 		loops:    make(map[int64]int64),
 		tree:     augmentedtree.New(1),
 	}
 }
 
-func (l *lookupLayer) indexPolygon(id int64, poly [][][]float64) error {
+func (l *layer) indexPolygon(id int64, poly [][][]float64) error {
 	rc := s2.RegionCoverer{
 		MinLevel: 4,
 		MaxLevel: 22,
@@ -142,7 +142,7 @@ func (l *lookupLayer) indexPolygon(id int64, poly [][][]float64) error {
 	return nil
 }
 
-func (l *lookupData) Query(lat, lng float64, layerID string) ([]int64, error) {
+func (l *Data) Query(lat, lng float64, layerID string) ([]int64, error) {
 	l.layerLock.Lock()
 	layer, ok := l.layers[layerID]
 	l.layerLock.Unlock()
