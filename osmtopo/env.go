@@ -486,7 +486,7 @@ func (e *Env) handleExportTopologies(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	if e.Status.Export.Error != "" {
-		http.Error(w, fmt.Sprintf("Export failed: %d", e.Status.Export.Error), http.StatusInternalServerError)
+		http.Error(w, fmt.Sprintf("Export failed: %s", e.Status.Export.Error), http.StatusInternalServerError)
 		return
 	}
 
