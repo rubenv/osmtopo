@@ -7,9 +7,9 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/Workiva/go-datastructures/augmentedtree"
 	"github.com/golang/geo/s2"
 	geojson "github.com/paulmach/go.geojson"
+	segtree "github.com/rubenv/go-segtree"
 	"github.com/rubenv/topojson"
 )
 
@@ -18,7 +18,7 @@ type Data struct {
 }
 
 type layer struct {
-	tree     augmentedtree.Tree
+	tree     *segtree.Tree
 	loops    map[int64]int64
 	polygons map[int64]*loopPolygon
 }
@@ -77,11 +77,21 @@ func (l *Data) IndexTopology(layerID string, topo *topojson.Topology) error {
 	return nil
 }
 
+func (l *Data) Build() error {
+	for _, layer := range l.layers {
+		err := layer.tree.BuildTree()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func newLayer() *layer {
 	return &layer{
 		polygons: make(map[int64]*loopPolygon),
 		loops:    make(map[int64]int64),
-		tree:     augmentedtree.New(1),
+		tree:     &segtree.Tree{},
 	}
 }
 
@@ -125,24 +135,8 @@ func (l *layer) indexPolygon(id int64, poly [][][]float64) error {
 
 	covering := rc.Covering(&region{outer})
 
-	// Find a pre-existing interval
 	for _, cell := range covering {
-		ival := &interval{Cell: cell}
-		results := l.tree.Query(ival)
-
-		added := false
-		for _, result := range results {
-			i := result.(*interval)
-			if ival.EqualAtDimension(result, 1) {
-				i.Loops = append(i.Loops, loopId)
-				added = true
-			}
-		}
-
-		if !added {
-			ival.Loops = []int64{loopId}
-			l.tree.Add(ival)
-		}
+		l.tree.Push(uint64(cell.RangeMin()), uint64(cell.RangeMax()), loopId)
 	}
 
 	return nil
@@ -156,19 +150,19 @@ func (l *Data) Query(lat, lng float64, layerID string) []int64 {
 	}
 
 	cell := s2.CellIDFromLatLng(s2.LatLngFromDegrees(lat, lng))
-	ival := &interval{Cell: cell}
 
 	matches := make([]int64, 0)
-	results := layer.tree.Query(ival)
-	for _, r := range results {
-		result := r.(*interval)
-		for _, loop := range result.Loops {
-			geomId := layer.loops[loop]
-			poly := layer.polygons[loop]
+	results, err := layer.tree.QueryIndex(uint64(cell))
+	if err != nil {
+		panic(err)
+	}
+	for r := range results {
+		loop := r.(int64)
+		geomId := layer.loops[loop]
+		poly := layer.polygons[loop]
 
-			if poly.IsInside(lat, lng) {
-				matches = append(matches, geomId)
-			}
+		if poly.IsInside(lat, lng) {
+			matches = append(matches, geomId)
 		}
 	}
 

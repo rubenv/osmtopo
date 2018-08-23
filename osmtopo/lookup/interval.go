@@ -19,13 +19,8 @@ func (s *interval) HighAtDimension(d uint64) int64 {
 }
 
 func (s *interval) OverlapsAtDimension(i augmentedtree.Interval, d uint64) bool {
-	return s.HighAtDimension(d) > i.LowAtDimension(d) &&
-		s.LowAtDimension(d) < i.HighAtDimension(d)
-}
-
-func (s *interval) EqualAtDimension(i augmentedtree.Interval, d uint64) bool {
-	return s.HighAtDimension(d) == i.LowAtDimension(d) &&
-		s.LowAtDimension(d) == i.HighAtDimension(d)
+	return s.HighAtDimension(d) >= i.LowAtDimension(d) &&
+		s.LowAtDimension(d) <= i.HighAtDimension(d)
 }
 
 func (s *interval) ID() uint64 {

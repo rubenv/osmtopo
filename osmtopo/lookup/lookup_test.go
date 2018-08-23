@@ -25,6 +25,9 @@ func TestLookup(t *testing.T) {
 	err = l.IndexGeometry("test", 291667, geom)
 	is.NoErr(err)
 
+	err = l.Build()
+	is.NoErr(err)
+
 	matches := l.Query(51.080501556396484, 4.464809894561768, "test")
 	is.Equal(len(matches), 0)
 }
@@ -60,6 +63,9 @@ func TestLookupCities(t *testing.T) {
 
 	l := New()
 	err = l.IndexTopology("cities", topo)
+	is.NoErr(err)
+
+	err = l.Build()
 	is.NoErr(err)
 
 	ids := l.Query(54.1504053, -4.4776897, "cities")
