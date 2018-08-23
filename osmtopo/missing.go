@@ -32,7 +32,10 @@ func (e *Env) importMissing(in io.Reader) error {
 	for _, m := range missing {
 		complete := true
 		for _, layer := range e.config.Layers {
-			matches := e.topologies.Query(m.Lat, m.Lon, layer.ID)
+			matches, err := e.topologies.Query(m.Lat, m.Lon, layer.ID)
+			if err != nil {
+				return err
+			}
 			if len(matches) == 0 {
 				complete = false
 			}
@@ -74,12 +77,18 @@ func (e *Env) getMissingCoordinate() (*CoordinateInfo, error) {
 
 	complete := true
 	for _, layer := range e.config.Layers {
-		matches := e.topologies.Query(c.Lat, c.Lon, layer.ID)
+		matches, err := e.topologies.Query(c.Lat, c.Lon, layer.ID)
+		if err != nil {
+			return nil, err
+		}
 		if len(matches) == 0 {
 			complete = false
 
 			suggestions := make([]*RelationSuggestion, 0)
-			matches := e.lookup.Query(c.Lat, c.Lon, layer.ID)
+			matches, err := e.lookup.Query(c.Lat, c.Lon, layer.ID)
+			if err != nil {
+				return nil, err
+			}
 			for _, match := range matches {
 				rel, err := e.GetRelation(match)
 				if err != nil {

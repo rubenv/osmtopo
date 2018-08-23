@@ -28,7 +28,8 @@ func TestLookup(t *testing.T) {
 	err = l.Build()
 	is.NoErr(err)
 
-	matches := l.Query(51.080501556396484, 4.464809894561768, "test")
+	matches, err := l.Query(51.080501556396484, 4.464809894561768, "test")
+	is.NoErr(err)
 	is.Equal(len(matches), 0)
 }
 
@@ -68,7 +69,8 @@ func TestLookupCities(t *testing.T) {
 	err = l.Build()
 	is.NoErr(err)
 
-	ids := l.Query(54.1504053, -4.4776897, "cities")
+	ids, err := l.Query(54.1504053, -4.4776897, "cities")
+	is.NoErr(err)
 	is.Equal(len(ids), 1)
 	is.Equal(1061138, ids[0])
 }
