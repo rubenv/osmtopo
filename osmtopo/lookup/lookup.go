@@ -125,6 +125,10 @@ func (l *layer) indexPolygon(id int64, poly [][][]float64) error {
 	}
 
 	outer := makeLoop(poly[0])
+	if outer == nil {
+		return nil
+	}
+
 	err := outer.Validate()
 	if err != nil {
 		return fmt.Errorf("Invalid outer loop for %d: %s", id, err)
