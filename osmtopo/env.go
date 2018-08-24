@@ -24,6 +24,7 @@ import (
 	"github.com/rubenv/servertiming"
 	"github.com/rubenv/topojson"
 	"github.com/tecbot/gorocksdb"
+	"golang.org/x/sync/errgroup"
 )
 
 type Env struct {
@@ -265,33 +266,41 @@ func (e *Env) loadTopologies() error {
 	}
 	e.topoData = topoData
 
+	var g errgroup.Group
+
 	lookup := lookup.New()
-	for _, layer := range e.config.Layers {
+	for _, l := range e.config.Layers {
+		layer := l
+
 		ids, ok := e.topoData.Layers[layer.ID]
 		if !ok {
 			continue
 		}
 
-		idNeeded := make(map[int64]bool)
-		for _, id := range ids {
-			idNeeded[id] = true
-		}
+		g.Go(func() error {
+			idNeeded := make(map[int64]bool)
+			for _, id := range ids {
+				idNeeded[id] = true
+			}
 
-		pipe := NewGeometryPipeline(e).
-			Filter(func(rel *model.Relation) bool {
-				return idNeeded[rel.Id]
-			}).
-			Simplify(layer.Simplify)
+			pipe := NewGeometryPipeline(e).
+				Filter(func(rel *model.Relation) bool {
+					return idNeeded[rel.Id]
+				}).
+				Simplify(layer.Simplify)
 
-		topo, err := pipe.Run()
-		if err != nil {
-			return fmt.Errorf("GeometryPipeline: %s", err)
-		}
+			topo, err := pipe.Run()
+			if err != nil {
+				return fmt.Errorf("GeometryPipeline: %s", err)
+			}
 
-		err = lookup.IndexTopology(layer.ID, topo)
-		if err != nil {
-			return err
-		}
+			return lookup.IndexTopology(layer.ID, topo)
+		})
+	}
+
+	err = g.Wait()
+	if err != nil {
+		return err
 	}
 
 	err = lookup.Build()
