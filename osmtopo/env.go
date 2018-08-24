@@ -421,27 +421,18 @@ func (e *Env) handleAdd(w http.ResponseWriter, req *http.Request) {
 		}
 
 		e.topoData.Add(layer.ID, id)
-		pipe := NewGeometryPipeline(e).
-			Select(id).
-			Simplify(layer.Simplify)
-
-		topo, err := pipe.Run()
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
-
-		err = e.topologies.IndexTopology(layer.ID, topo)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-			return
-		}
 
 		added = true
 	}
 
 	if added {
 		err = e.topoData.WriteTo(e.topologiesFile)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		err = e.loadTopologies()
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return

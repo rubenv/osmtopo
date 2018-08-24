@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"strconv"
+	"sync"
 
 	"github.com/golang/geo/s2"
 	geojson "github.com/paulmach/go.geojson"
@@ -15,8 +16,9 @@ import (
 )
 
 type Data struct {
-	layers map[string]*layer
-	built  bool
+	layers    map[string]*layer
+	layerLock sync.Mutex
+	built     bool
 }
 
 type layer struct {
@@ -38,11 +40,14 @@ func (l *Data) IndexGeometry(layerID string, id int64, geom *geojson.Geometry) e
 	if l.built {
 		return errors.New("Cannot index after building the lookup")
 	}
+
+	l.layerLock.Lock()
 	layer, ok := l.layers[layerID]
 	if !ok {
 		layer = newLayer()
 		l.layers[layerID] = layer
 	}
+	l.layerLock.Unlock()
 
 	switch geom.Type {
 	case geojson.GeometryPolygon:
@@ -86,6 +91,10 @@ func (l *Data) Build() error {
 	if l.built {
 		return errors.New("Already built!")
 	}
+
+	l.layerLock.Lock()
+	defer l.layerLock.Unlock()
+
 	for _, layer := range l.layers {
 		err := layer.tree.BuildTree()
 		if err != nil {
