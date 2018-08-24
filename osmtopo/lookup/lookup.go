@@ -4,6 +4,7 @@
 package lookup
 
 import (
+	"errors"
 	"fmt"
 	"strconv"
 
@@ -15,6 +16,7 @@ import (
 
 type Data struct {
 	layers map[string]*layer
+	built  bool
 }
 
 type layer struct {
@@ -33,6 +35,9 @@ func New() *Data {
 //
 // Note that concurrency is not supported! You should always index all data prior to doing any querying.
 func (l *Data) IndexGeometry(layerID string, id int64, geom *geojson.Geometry) error {
+	if l.built {
+		return errors.New("Cannot index after building the lookup")
+	}
 	layer, ok := l.layers[layerID]
 	if !ok {
 		layer = newLayer()
@@ -78,12 +83,16 @@ func (l *Data) IndexTopology(layerID string, topo *topojson.Topology) error {
 }
 
 func (l *Data) Build() error {
+	if l.built {
+		return errors.New("Already built!")
+	}
 	for _, layer := range l.layers {
 		err := layer.tree.BuildTree()
 		if err != nil {
 			return err
 		}
 	}
+	l.built = true
 	return nil
 }
 
