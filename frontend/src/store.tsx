@@ -32,6 +32,7 @@ interface Config {
 export interface Suggestion {
     id: number;
     name: string;
+    admin_level: number;
 }
 
 export interface Layer {
