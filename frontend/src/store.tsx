@@ -18,6 +18,7 @@ export interface MissingCoordinate {
     suggestions: { [key: string]: Array<Suggestion> };
     matched: { [key: string]: boolean };
     matchnames: { [key: string]: string };
+    matchids: { [key: string]: number };
 }
 
 interface Coordinate {
@@ -27,12 +28,19 @@ interface Coordinate {
 
 interface Config {
     layers: Array<Layer>;
+    rules: Array<MatchRule>;
+}
+
+interface MatchRule {
+    match: { [key: string]: number };
+    restrict: { [key: string]: Array<number> };
 }
 
 export interface Suggestion {
     id: number;
     name: string;
     admin_level: number;
+    disabled: boolean;
 }
 
 export interface Layer {
@@ -70,6 +78,52 @@ class Store {
         autorun(() => {
             if (this.initialized && this.missing > 0 && !this.coordinate) {
                 this.loadCoordinate();
+            }
+        });
+        autorun(() => {
+            if (!this.initialized) {
+                return;
+            }
+
+            let coord = this.coordinate;
+            if (!coord) {
+                return;
+            }
+
+            let rules = this.config.rules;
+            if (!rules) {
+                return;
+            }
+
+            for (var layer in coord.suggestions) {
+                var s = coord.suggestions[layer];
+                s.forEach((suggestion: Suggestion) => {
+                    runInAction(() => {
+                        suggestion.disabled = false;
+                        rules.forEach((rule: MatchRule) => {
+                            let matches = true;
+                            for (let l in rule.match) {
+                                if (!coord) {
+                                    continue;
+                                }
+                                let value = coord.matchids[l] || this.selected[l] || 0;
+                                matches = matches && rule.match[l] == value;
+                            }
+                            if (!matches) {
+                                return;
+                            }
+
+                            for (let r in rule.restrict) {
+                                if (r == layer) {
+                                    let allowed = rule.restrict[r];
+                                    if (allowed.indexOf(suggestion.admin_level) < 0) {
+                                        suggestion.disabled = true;
+                                    }
+                                }
+                            }
+                        });
+                    });
+                });
             }
         });
     }

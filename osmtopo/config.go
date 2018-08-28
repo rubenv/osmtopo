@@ -32,6 +32,9 @@ type Config struct {
 	// Languages to extract (names, 2-letter codes)
 	Languages []string `yaml:"languages" json:"languages"`
 
+	// Matching rules
+	Rules []MatchRule `yaml:"rules" json:"rules"`
+
 	// **** Bits below usually don't need to be set ****
 
 	// Update interval in seconds, defaults to every 4 weeks
@@ -54,6 +57,11 @@ type Layer struct {
 	Name        string `yaml:"name" json:"name"`
 	AdminLevels []int  `yaml:"admin_levels" json:"admin_levels"`
 	Simplify    int    `yaml:"simplify" json:"simplify"`
+}
+
+type MatchRule struct {
+	Match    map[string]int64 `yaml:"match" json:"match"`
+	Restrict map[string][]int `yaml:"restrict" json:"restrict"`
 }
 
 func ReadConfig(filename string) (*Config, error) {

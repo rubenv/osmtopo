@@ -13,6 +13,7 @@ type CoordinateInfo struct {
 	Suggestions map[string][]*RelationSuggestion `json:"suggestions"`
 	Matched     map[string]bool                  `json:"matched"`
 	MatchName   map[string]string                `json:"matchnames"`
+	MatchID     map[string]int64                 `json:"matchids"`
 }
 
 type RelationSuggestion struct {
@@ -73,6 +74,7 @@ func (e *Env) getMissingCoordinate() (*CoordinateInfo, error) {
 		Suggestions: make(map[string][]*RelationSuggestion),
 		Matched:     make(map[string]bool),
 		MatchName:   make(map[string]string),
+		MatchID:     make(map[string]int64),
 	}
 
 	complete := true
@@ -119,6 +121,7 @@ func (e *Env) getMissingCoordinate() (*CoordinateInfo, error) {
 			name, _ := rel.GetTag("name")
 			info.Matched[layer.ID] = true
 			info.MatchName[layer.ID] = name
+			info.MatchID[layer.ID] = rel.Id
 		}
 	}
 	if complete {

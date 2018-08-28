@@ -25,3 +25,13 @@ layers:
 
 blacklist:
     - 3659532
+
+rules:
+    - match:
+        countries: 52411 # Belgium
+      restrict:
+          regions: [6]
+    - match:
+        countries: 2323309 # The Netherlands
+      restrict:
+          regions: [4]

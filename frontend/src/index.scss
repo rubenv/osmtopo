@@ -93,3 +93,7 @@ $spinner-color: $gray-800;
     float: right;
     font-size: 90%;
 }
+
+.suggestion.disabled {
+    color: #CCCCCC;
+}
