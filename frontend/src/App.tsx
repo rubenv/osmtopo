@@ -53,7 +53,7 @@ class App extends React.Component<AppProperties, any> {
             onMouseLeave={this.unhoverSuggestion}
             disabled={suggestion.disabled}
         >
-            <Label check={true}>
+            <Label check={true} title={"" + suggestion.id}>
                 <Input type="radio" name={layer.id} onChange={this.selectSuggestion(layer, suggestion)} disabled={suggestion.disabled} />
                 <span className="admin_level">{suggestion.admin_level}</span>
                 {' ' + suggestion.name }

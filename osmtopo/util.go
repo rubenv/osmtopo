@@ -196,8 +196,17 @@ func GeometryToGeos(g *geojson.Geometry) (*geos.Geometry, error) {
 			return nil, err
 		}
 		shell := coords[0]
-		holes := coords[1:]
-		return geos.NewPolygon(shell, holes...)
+		holes := make([][]geos.Coord, 0, len(coords)-1)
+		for _, hole := range coords[1:] {
+			if len(hole) > 3 {
+				holes = append(holes, hole)
+			}
+		}
+		poly, err := geos.NewPolygon(shell, holes...)
+		if err != nil {
+			return nil, fmt.Errorf("Could not make polygon: %s", err)
+		}
+		return poly, nil
 	case geojson.GeometryMultiPolygon:
 		geoms := []*geos.Geometry{}
 		for _, c := range g.MultiPolygon {
@@ -206,10 +215,15 @@ func GeometryToGeos(g *geojson.Geometry) (*geos.Geometry, error) {
 				return nil, err
 			}
 			shell := coords[0]
-			holes := coords[1:]
+			holes := make([][]geos.Coord, 0, len(coords)-1)
+			for _, hole := range coords[1:] {
+				if len(hole) > 3 {
+					holes = append(holes, hole)
+				}
+			}
 			poly, err := geos.NewPolygon(shell, holes...)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("Could not make polygon: %s", err)
 			}
 			geoms = append(geoms, poly)
 		}

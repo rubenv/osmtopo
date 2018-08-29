@@ -63,7 +63,7 @@ func TestLookupCities(t *testing.T) {
 	is.NoErr(err)
 
 	l := New()
-	err = l.IndexTopology("cities", topo)
+	err = l.IndexFeatures("cities", topo.ToGeoJSON())
 	is.NoErr(err)
 
 	err = l.Build()
@@ -71,6 +71,12 @@ func TestLookupCities(t *testing.T) {
 
 	ids, err := l.Query(54.1504053, -4.4776897, "cities")
 	is.NoErr(err)
-	is.Equal(len(ids), 1)
-	is.Equal(1061138, ids[0])
+
+	found := false
+	for _, id := range ids {
+		if id == 1061138 {
+			found = true
+		}
+	}
+	is.True(found)
 }

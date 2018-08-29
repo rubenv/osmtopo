@@ -19,6 +19,7 @@ import (
 
 	"github.com/gobuffalo/packr"
 	lru "github.com/hashicorp/golang-lru"
+	"github.com/paulsmith/gogeos/geos"
 	"github.com/rubenv/osmtopo/osmtopo/lookup"
 	"github.com/rubenv/osmtopo/osmtopo/model"
 	"github.com/rubenv/servertiming"
@@ -70,6 +71,31 @@ type ExportStatus struct {
 }
 
 func NewEnv(config *Config, topologiesFile, storePath, outputPath string) (*Env, error) {
+	env, err := prepareEnv(config, topologiesFile, storePath, outputPath)
+	if err != nil {
+		return nil, err
+	}
+
+	env.done.Add(1)
+	env.initialized.Add(1)
+	go env.runUpdater()
+
+	err = env.loadTopologies()
+	if err != nil {
+		return nil, err
+	}
+
+	c, err := env.countMissing()
+	if err != nil {
+		return nil, err
+	}
+	env.Status.Missing = c
+
+	return env, nil
+}
+
+// Used for testing
+func prepareEnv(config *Config, topologiesFile, storePath, outputPath string) (*Env, error) {
 	ctx, cf := context.WithCancel(context.Background())
 
 	cache, err := lru.New(1024)
@@ -93,21 +119,6 @@ func NewEnv(config *Config, topologiesFile, storePath, outputPath string) (*Env,
 	}
 
 	env.Status.Config = config
-
-	env.done.Add(1)
-	env.initialized.Add(1)
-	go env.runUpdater()
-
-	err = env.loadTopologies()
-	if err != nil {
-		return nil, err
-	}
-
-	c, err := env.countMissing()
-	if err != nil {
-		return nil, err
-	}
-	env.Status.Missing = c
 
 	return env, nil
 }
@@ -225,6 +236,7 @@ func (e *Env) updateData() error {
 }
 
 func (e *Env) loadLookup() error {
+
 	lookup := lookup.New()
 	for _, layer := range e.config.Layers {
 		levelNeeded := make(map[int]bool)
@@ -235,15 +247,15 @@ func (e *Env) loadLookup() error {
 		pipe := NewGeometryPipeline(e).
 			Filter(func(rel *model.Relation) bool {
 				return levelNeeded[rel.GetAdminLevel()]
-			}).
-			Simplify(layer.Simplify)
+			}) /*.
+			Simplify(layer.Simplify)*/
 
 		topo, err := pipe.Run()
 		if err != nil {
 			return fmt.Errorf("GeometryPipeline: %s", err)
 		}
 
-		err = lookup.IndexTopology(layer.ID, topo)
+		err = lookup.IndexFeatures(layer.ID, topo.ToGeoJSON())
 		if err != nil {
 			return err
 		}
@@ -294,7 +306,7 @@ func (e *Env) loadTopologies() error {
 				return fmt.Errorf("GeometryPipeline: %s", err)
 			}
 
-			return lookup.IndexTopology(layer.ID, topo)
+			return lookup.IndexFeatures(layer.ID, topo.ToGeoJSON())
 		})
 	}
 
@@ -560,4 +572,40 @@ func (e *Env) handleExportTopologies(w http.ResponseWriter, req *http.Request) {
 			}
 		}
 	}
+}
+
+func (e *Env) queryLookup(lookup *lookup.Data, lat, lon float64, layer string) ([]int64, error) {
+	matches, err := lookup.Query(lat, lon, layer)
+	if err != nil {
+		return nil, err
+	}
+
+	point, err := geos.NewPoint(geos.Coord{X: lon, Y: lat})
+	if err != nil {
+		return nil, err
+	}
+
+	result := make([]int64, 0, len(matches))
+	for _, match := range matches {
+		rel, err := e.GetRelation(match)
+		if err != nil {
+			return nil, err
+		}
+
+		g, err := ToGeometry(rel, e)
+		if err != nil {
+			return nil, err
+		}
+
+		contains, err := g.Contains(point)
+		if err != nil {
+			return nil, err
+		}
+
+		if contains {
+			result = append(result, match)
+		}
+	}
+
+	return result, nil
 }

@@ -4,15 +4,16 @@
 package lookup
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"strconv"
 	"sync"
 
 	"github.com/golang/geo/s2"
 	geojson "github.com/paulmach/go.geojson"
 	"github.com/rubenv/osmtopo/osmtopo/lookup/segtree"
-	"github.com/rubenv/topojson"
 )
 
 type Data struct {
@@ -22,9 +23,9 @@ type Data struct {
 }
 
 type layer struct {
-	tree     *segtree.Tree
-	loops    map[int64]int64
-	polygons map[int64]*loopPolygon
+	tree  *segtree.Tree
+	loops map[int64]int64
+	//polygons map[int64]*loopPolygon
 }
 
 func New() *Data {
@@ -49,6 +50,14 @@ func (l *Data) IndexGeometry(layerID string, id int64, geom *geojson.Geometry) e
 	}
 	l.layerLock.Unlock()
 
+	if id == 6482207 {
+		data, err := json.Marshal(geom)
+		if err != nil {
+			return err
+		}
+		log.Println(string(data))
+	}
+
 	switch geom.Type {
 	case geojson.GeometryPolygon:
 		err := layer.indexPolygon(id, geom.Polygon)
@@ -70,8 +79,7 @@ func (l *Data) IndexGeometry(layerID string, id int64, geom *geojson.Geometry) e
 // Index all geometries of a topology into a given level
 //
 // Note that concurrency is not supported! You should always index all data prior to doing any querying.
-func (l *Data) IndexTopology(layerID string, topo *topojson.Topology) error {
-	fc := topo.ToGeoJSON()
+func (l *Data) IndexFeatures(layerID string, fc *geojson.FeatureCollection) error {
 	for _, feat := range fc.Features {
 		id, err := strconv.ParseInt(feat.ID.(string), 10, 64)
 		if err != nil {
@@ -107,9 +115,9 @@ func (l *Data) Build() error {
 
 func newLayer() *layer {
 	return &layer{
-		polygons: make(map[int64]*loopPolygon),
-		loops:    make(map[int64]int64),
-		tree:     &segtree.Tree{},
+		//polygons: make(map[int64]*loopPolygon),
+		loops: make(map[int64]int64),
+		tree:  &segtree.Tree{},
 	}
 }
 
@@ -150,10 +158,10 @@ func (l *layer) indexPolygon(id int64, poly [][][]float64) error {
 
 	loopId := int64(len(l.loops))
 	l.loops[loopId] = id
-	l.polygons[loopId] = &loopPolygon{
+	/*l.polygons[loopId] = &loopPolygon{
 		outer: outer,
 		inner: inner,
-	}
+	}*/
 
 	covering := rc.Covering(&region{outer})
 
@@ -181,11 +189,13 @@ func (l *Data) Query(lat, lng float64, layerID string) ([]int64, error) {
 	for r := range results {
 		loop := r.(int64)
 		geomId := layer.loops[loop]
-		poly := layer.polygons[loop]
+		/*
+			poly := layer.polygons[loop]
 
-		if poly.IsInside(lat, lng) {
-			matches = append(matches, geomId)
-		}
+			if poly.IsInside(lat, lng) {
+		*/
+		matches = append(matches, geomId)
+		//}
 	}
 
 	return matches, nil
