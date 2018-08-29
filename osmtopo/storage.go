@@ -97,6 +97,12 @@ func ToGeometryCached(t string, r *model.Relation, e *Env) (*geojson.Geometry, e
 		return nil, err
 	}
 
+	// Apply a buffer to avoid self-intersections
+	g, err = g.Buffer(0)
+	if err != nil {
+		return nil, err
+	}
+
 	geom, err := GeometryFromGeos(g)
 	if err != nil {
 		return nil, fmt.Errorf("GeometryFromGeos: %s for relation %d: %#v", err, r.Id, g)
