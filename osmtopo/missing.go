@@ -81,7 +81,7 @@ func (e *Env) getMissingCoordinate() (*CoordinateInfo, error) {
 	for _, layer := range e.config.Layers {
 		matches, err := e.queryLookup(e.topologies, c.Lat, c.Lon, layer.ID)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("Query topologies: %s", err)
 		}
 		if len(matches) == 0 {
 			complete = false
@@ -89,7 +89,7 @@ func (e *Env) getMissingCoordinate() (*CoordinateInfo, error) {
 			suggestions := make([]*RelationSuggestion, 0)
 			matches, err := e.queryLookup(e.lookup, c.Lat, c.Lon, layer.ID)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("Query lookup: %s", err)
 			}
 			for _, match := range matches {
 				rel, err := e.GetRelation(match)

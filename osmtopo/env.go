@@ -661,12 +661,12 @@ func (e *Env) queryLookup(lookup *lookup.Data, lat, lon float64, layer string) (
 
 			geom, err := ToGeometryCached("rel", rel, e)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("Fetch geometry: %s on rel %d", err, rel.Id)
 			}
 
 			o, err := GeometryToGeos(geom)
 			if err != nil {
-				return nil, err
+				return nil, fmt.Errorf("Convert to geos: %s on rel %d", err, rel.Id)
 			}
 			g = o
 			e.geosCache.Add(key, g)
@@ -674,7 +674,7 @@ func (e *Env) queryLookup(lookup *lookup.Data, lat, lon float64, layer string) (
 
 		contains, err := g.Contains(point)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("Contains: %s on rel %d", err, match)
 		}
 
 		if contains {
