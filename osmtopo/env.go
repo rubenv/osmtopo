@@ -51,6 +51,7 @@ type Env struct {
 
 	topoData  *TopologyData
 	topoCache *lru.Cache
+	geosCache *lru.Cache
 
 	waterLock     sync.Mutex
 	waterClipGeos map[string][]*clipGeometry
@@ -100,7 +101,12 @@ func NewEnv(config *Config, topologiesFile, storePath, outputPath string) (*Env,
 func prepareEnv(config *Config, topologiesFile, storePath, outputPath string) (*Env, error) {
 	ctx, cf := context.WithCancel(context.Background())
 
-	cache, err := lru.New(1024)
+	topoCache, err := lru.New(1024)
+	if err != nil {
+		return nil, err
+	}
+
+	geosCache, err := lru.New(1024)
 	if err != nil {
 		return nil, err
 	}
@@ -112,7 +118,8 @@ func prepareEnv(config *Config, topologiesFile, storePath, outputPath string) (*
 		topologiesFile: topologiesFile,
 		storePath:      storePath,
 		outputPath:     outputPath,
-		topoCache:      cache,
+		topoCache:      topoCache,
+		geosCache:      geosCache,
 		waterClipGeos:  make(map[string][]*clipGeometry),
 	}
 	err = env.openStore()
@@ -640,14 +647,29 @@ func (e *Env) queryLookup(lookup *lookup.Data, lat, lon float64, layer string) (
 
 	result := make([]int64, 0, len(matches))
 	for _, match := range matches {
-		rel, err := e.GetRelation(match)
-		if err != nil {
-			return nil, err
-		}
+		key := fmt.Sprintf("%d", match)
+		var g *geos.Geometry
 
-		g, err := ToGeometry(rel, e)
-		if err != nil {
-			return nil, err
+		o, ok := e.geosCache.Get(key)
+		if ok {
+			g = o.(*geos.Geometry)
+		} else {
+			rel, err := e.GetRelation(match)
+			if err != nil {
+				return nil, err
+			}
+
+			geom, err := ToGeometryCached("rel", rel, e)
+			if err != nil {
+				return nil, err
+			}
+
+			o, err := GeometryToGeos(geom)
+			if err != nil {
+				return nil, err
+			}
+			g = o
+			e.geosCache.Add(key, g)
 		}
 
 		contains, err := g.Contains(point)
