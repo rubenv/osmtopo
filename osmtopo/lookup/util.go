@@ -21,16 +21,11 @@ func coordEquals(a, b []float64) bool {
 	return a[0] == b[0] && a[1] == b[1]
 }
 
-func hasDuplicates(coords [][]float64) bool {
-	dupes := 0
+func uniqueLength(coords [][]float64) int {
 	seen := make(map[[2]float64]bool)
 	for _, point := range coords {
 		p := [2]float64{point[0], point[1]}
-		_, ok := seen[p]
-		if ok {
-			dupes += 1
-		}
 		seen[p] = true
 	}
-	return dupes > 1
+	return len(seen)
 }

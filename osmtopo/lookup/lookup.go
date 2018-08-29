@@ -135,7 +135,7 @@ func (l *layer) indexPolygon(id int64, poly [][][]float64) error {
 		MaxCells: 8,
 	}
 
-	if len(poly[0]) <= 4 && hasDuplicates(poly[0]) {
+	if uniqueLength(poly[0]) < 4 {
 		return nil
 	}
 
@@ -147,20 +147,6 @@ func (l *layer) indexPolygon(id int64, poly [][][]float64) error {
 	err := outer.Validate()
 	if err != nil {
 		return fmt.Errorf("Invalid outer loop for %d: %s", id, err)
-	}
-
-	inner := make([]*s2.Loop, 0)
-	for i, coords := range poly[1:] {
-		loop := makeLoop(coords)
-		if loop == nil {
-			continue
-		}
-
-		err := loop.Validate()
-		if err != nil {
-			return fmt.Errorf("Invalid inner loop %d for %d: %s", i, id, err)
-		}
-		inner = append(inner, loop)
 	}
 
 	covering := rc.Covering(&region{outer})
