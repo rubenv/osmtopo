@@ -23,25 +23,3 @@ func makeLoop(coords [][]float64) *s2.Loop {
 	}
 	return s2.LoopFromPoints(points)
 }
-
-type loopPolygon struct {
-	outer *s2.Loop
-	inner []*s2.Loop
-}
-
-func (l *loopPolygon) IsInside(lat, lng float64) bool {
-	latlon := s2.LatLngFromDegrees(lat, lng)
-	point := s2.PointFromLatLng(latlon)
-
-	if !l.outer.ContainsPoint(point) {
-		return false
-	}
-
-	for _, ring := range l.inner {
-		if ring.ContainsPoint(point) {
-			return false
-		}
-	}
-
-	return true
-}

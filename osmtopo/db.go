@@ -211,6 +211,18 @@ func (e *Env) GetGeometry(prefix string, id int64) (*model.Geometry, error) {
 	return rel, nil
 }
 
+func (e *Env) addGeometry(prefix string, n *model.Geometry) error {
+	wb := gorocksdb.NewWriteBatch()
+	defer wb.Destroy()
+	data, err := n.Marshal()
+	if err != nil {
+		return err
+	}
+	key := fmt.Sprintf("geometry/%s/%d", prefix, n.Id)
+	wb.Put([]byte(key), data)
+	return e.db.Write(e.wo, wb)
+}
+
 func (e *Env) addNewGeometries(prefix string, arr []*model.Geometry) error {
 	wb := gorocksdb.NewWriteBatch()
 	defer wb.Destroy()

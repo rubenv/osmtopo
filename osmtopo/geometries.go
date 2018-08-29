@@ -133,15 +133,10 @@ func (p *GeometryPipeline) Run() (*topojson.Topology, error) {
 					continue
 				}
 
-				g, err := ToGeometry(rel, p.env)
+				geom, err := ToGeometryCached("rel", rel, p.env)
 				if err != nil {
 					// Broken geometry, skip!
 					continue
-				}
-
-				geom, err := GeometryFromGeos(g)
-				if err != nil {
-					return fmt.Errorf("GeometryFromGeos: %s for relation %d: %#v", err, rel.Id, g)
 				}
 
 				out := geojson.NewFeature(geom)

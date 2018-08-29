@@ -1,10 +1,12 @@
 package osmtopo
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 
 	"github.com/omniscale/imposm3/element"
+	geojson "github.com/paulmach/go.geojson"
 	"github.com/paulsmith/gogeos/geos"
 	"github.com/rubenv/osmtopo/osmtopo/model"
 	"github.com/rubenv/osmtopo/simplify"
@@ -74,6 +76,46 @@ func RelationFromEl(n element.Relation) model.Relation {
 	}
 	rel.Members = members
 	return rel
+}
+
+func ToGeometryCached(t string, r *model.Relation, e *Env) (*geojson.Geometry, error) {
+	f, err := e.GetGeometry(t, r.Id)
+	if err != nil {
+		return nil, err
+	}
+	if f != nil {
+		g := &geojson.Geometry{}
+		err = json.Unmarshal(f.Geojson, g)
+		if err != nil {
+			return nil, err
+		}
+		return g, nil
+	}
+
+	g, err := ToGeometry(r, e)
+	if err != nil {
+		return nil, err
+	}
+
+	geom, err := GeometryFromGeos(g)
+	if err != nil {
+		return nil, fmt.Errorf("GeometryFromGeos: %s for relation %d: %#v", err, r.Id, g)
+	}
+
+	data, err := json.Marshal(geom)
+	if err != nil {
+		return nil, err
+	}
+
+	err = e.addGeometry(t, &model.Geometry{
+		Id:      r.Id,
+		Geojson: data,
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return geom, nil
 }
 
 func ToGeometry(r *model.Relation, e *Env) (*geos.Geometry, error) {

@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"os"
 	"path"
+	"runtime"
 	"strconv"
 	"strings"
 	"sync"
@@ -19,6 +20,7 @@ import (
 
 	"github.com/gobuffalo/packr"
 	lru "github.com/hashicorp/golang-lru"
+	geojson "github.com/paulmach/go.geojson"
 	"github.com/paulsmith/gogeos/geos"
 	"github.com/rubenv/osmtopo/osmtopo/lookup"
 	"github.com/rubenv/osmtopo/osmtopo/model"
@@ -244,18 +246,69 @@ func (e *Env) loadLookup() error {
 			levelNeeded[admin] = true
 		}
 
-		pipe := NewGeometryPipeline(e).
-			Filter(func(rel *model.Relation) bool {
-				return levelNeeded[rel.GetAdminLevel()]
-			}) /*.
-			Simplify(layer.Simplify)*/
+		relations := make(chan *model.Relation, 100)
 
-		topo, err := pipe.Run()
-		if err != nil {
-			return fmt.Errorf("GeometryPipeline: %s", err)
+		g, ctx := errgroup.WithContext(e.ctx)
+		g.Go(func() error {
+			defer close(relations)
+
+			it, err := e.iterRelations()
+			if err != nil {
+				return err
+			}
+			defer it.Close()
+
+			for ctx.Err() == nil {
+				rel, err := it.Next()
+				if err != nil {
+					return err
+				}
+				if rel == nil {
+					break
+				}
+
+				relations <- rel
+			}
+
+			return ctx.Err()
+		})
+
+		geomWorkers := runtime.NumCPU() * 2
+		geomWg := sync.WaitGroup{}
+		geomWg.Add(geomWorkers)
+		for i := 0; i < geomWorkers; i++ {
+			g.Go(func() error {
+				defer geomWg.Done()
+				for ctx.Err() == nil {
+					rel, ok := <-relations
+					if !ok {
+						return nil
+					}
+
+					if !levelNeeded[rel.GetAdminLevel()] {
+						continue
+					}
+
+					geom, err := ToGeometryCached("rel", rel, e)
+					if err != nil {
+						// Broken geometry, skip!
+						continue
+					}
+
+					feat := geojson.NewFeature(geom)
+					feat.ID = rel.Id
+
+					err = lookup.IndexFeature(layer.ID, feat)
+					if err != nil {
+						return err
+					}
+				}
+
+				return ctx.Err()
+			})
 		}
 
-		err = lookup.IndexFeatures(layer.ID, topo.ToGeoJSON())
+		err := g.Wait()
 		if err != nil {
 			return err
 		}

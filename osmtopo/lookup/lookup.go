@@ -4,10 +4,8 @@
 package lookup
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"strconv"
 	"sync"
 
@@ -23,8 +21,9 @@ type Data struct {
 }
 
 type layer struct {
-	tree  *segtree.Tree
-	loops map[int64]int64
+	indexLock sync.Mutex
+	tree      *segtree.Tree
+	loops     map[int64]int64
 	//polygons map[int64]*loopPolygon
 }
 
@@ -50,14 +49,6 @@ func (l *Data) IndexGeometry(layerID string, id int64, geom *geojson.Geometry) e
 	}
 	l.layerLock.Unlock()
 
-	if id == 6482207 {
-		data, err := json.Marshal(geom)
-		if err != nil {
-			return err
-		}
-		log.Println(string(data))
-	}
-
 	switch geom.Type {
 	case geojson.GeometryPolygon:
 		err := layer.indexPolygon(id, geom.Polygon)
@@ -76,19 +67,36 @@ func (l *Data) IndexGeometry(layerID string, id int64, geom *geojson.Geometry) e
 	return nil
 }
 
+func (l *Data) IndexFeature(layerID string, feat *geojson.Feature) error {
+	id := int64(0)
+	switch v := feat.ID.(type) {
+	case string:
+		i, err := strconv.ParseInt(v, 10, 64)
+		if err != nil {
+			return err
+		}
+		id = i
+	case int64:
+		id = v
+	default:
+		return fmt.Errorf("Unsupported ID type: %T", feat.ID)
+	}
+
+	err := l.IndexGeometry(layerID, id, feat.Geometry)
+	if err != nil {
+		return fmt.Errorf("IndexGeometry: %s", err)
+	}
+	return nil
+}
+
 // Index all geometries of a topology into a given level
 //
 // Note that concurrency is not supported! You should always index all data prior to doing any querying.
 func (l *Data) IndexFeatures(layerID string, fc *geojson.FeatureCollection) error {
 	for _, feat := range fc.Features {
-		id, err := strconv.ParseInt(feat.ID.(string), 10, 64)
+		err := l.IndexFeature(layerID, feat)
 		if err != nil {
 			return err
-		}
-
-		err = l.IndexGeometry(layerID, id, feat.Geometry)
-		if err != nil {
-			return fmt.Errorf("IndexGeometry: %s", err)
 		}
 	}
 
@@ -115,7 +123,6 @@ func (l *Data) Build() error {
 
 func newLayer() *layer {
 	return &layer{
-		//polygons: make(map[int64]*loopPolygon),
 		loops: make(map[int64]int64),
 		tree:  &segtree.Tree{},
 	}
@@ -156,18 +163,16 @@ func (l *layer) indexPolygon(id int64, poly [][][]float64) error {
 		inner = append(inner, loop)
 	}
 
+	covering := rc.Covering(&region{outer})
+
+	l.indexLock.Lock()
 	loopId := int64(len(l.loops))
 	l.loops[loopId] = id
-	/*l.polygons[loopId] = &loopPolygon{
-		outer: outer,
-		inner: inner,
-	}*/
-
-	covering := rc.Covering(&region{outer})
 
 	for _, cell := range covering {
 		l.tree.Push(uint64(cell.RangeMin()), uint64(cell.RangeMax()), loopId)
 	}
+	l.indexLock.Unlock()
 
 	return nil
 }
@@ -189,13 +194,7 @@ func (l *Data) Query(lat, lng float64, layerID string) ([]int64, error) {
 	for r := range results {
 		loop := r.(int64)
 		geomId := layer.loops[loop]
-		/*
-			poly := layer.polygons[loop]
-
-			if poly.IsInside(lat, lng) {
-		*/
 		matches = append(matches, geomId)
-		//}
 	}
 
 	return matches, nil
