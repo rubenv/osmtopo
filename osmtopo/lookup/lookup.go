@@ -37,27 +37,15 @@ func New() *Data {
 //
 // Note that concurrency is not supported! You should always index all data prior to doing any querying.
 func (l *Data) IndexGeometry(layerID string, id int64, geom *geojson.Geometry) error {
-	if l.built {
-		return errors.New("Cannot index after building the lookup")
-	}
-
-	l.layerLock.Lock()
-	layer, ok := l.layers[layerID]
-	if !ok {
-		layer = newLayer()
-		l.layers[layerID] = layer
-	}
-	l.layerLock.Unlock()
-
 	switch geom.Type {
 	case geojson.GeometryPolygon:
-		err := layer.indexPolygon(id, geom.Polygon)
+		err := l.IndexPolygon(layerID, id, geom.Polygon)
 		if err != nil {
 			return err
 		}
 	case geojson.GeometryMultiPolygon:
 		for _, poly := range geom.MultiPolygon {
-			err := layer.indexPolygon(id, poly)
+			err := l.IndexPolygon(layerID, id, poly)
 			if err != nil {
 				return err
 			}
@@ -65,6 +53,18 @@ func (l *Data) IndexGeometry(layerID string, id int64, geom *geojson.Geometry) e
 	}
 
 	return nil
+}
+
+func (l *Data) IndexPolygon(layerID string, id int64, poly [][][]float64) error {
+	covering, err := MakeCells(poly)
+	if err != nil {
+		return fmt.Errorf("%s for rel %d", err, id)
+	}
+	if covering == nil {
+		return nil
+	}
+
+	return l.IndexCells(layerID, id, covering)
 }
 
 func (l *Data) IndexFeature(layerID string, feat *geojson.Feature) error {
@@ -86,6 +86,23 @@ func (l *Data) IndexFeature(layerID string, feat *geojson.Feature) error {
 	if err != nil {
 		return fmt.Errorf("IndexGeometry: %s", err)
 	}
+	return nil
+}
+
+func (l *Data) IndexCells(layerID string, id int64, cells s2.CellUnion) error {
+	if l.built {
+		return errors.New("Cannot index after building the lookup")
+	}
+
+	l.layerLock.Lock()
+	layer, ok := l.layers[layerID]
+	if !ok {
+		layer = newLayer()
+		l.layers[layerID] = layer
+	}
+	l.layerLock.Unlock()
+
+	layer.indexCells(id, cells)
 	return nil
 }
 
@@ -127,36 +144,12 @@ func newLayer() *layer {
 	}
 }
 
-func (l *layer) indexPolygon(id int64, poly [][][]float64) error {
-	rc := s2.RegionCoverer{
-		MinLevel: 4,
-		MaxLevel: 22,
-		MaxCells: 8,
-	}
-
-	if uniqueLength(poly[0]) < 4 {
-		return nil
-	}
-
-	outer := makeLoop(poly[0])
-	if outer == nil {
-		return nil
-	}
-
-	err := outer.Validate()
-	if err != nil {
-		return fmt.Errorf("Invalid outer loop for %d: %s", id, err)
-	}
-
-	covering := rc.Covering(&region{outer})
-
+func (l *layer) indexCells(id int64, cells s2.CellUnion) {
 	l.indexLock.Lock()
-	for _, cell := range covering {
+	for _, cell := range cells {
 		l.tree.Push(uint64(cell.RangeMin()), uint64(cell.RangeMax()), id)
 	}
 	l.indexLock.Unlock()
-
-	return nil
 }
 
 // Look up all shapes that contain a given point, in a given layer
@@ -178,4 +171,29 @@ func (l *Data) Query(lat, lng float64, layerID string) ([]int64, error) {
 	}
 
 	return matches, nil
+}
+
+func MakeCells(poly [][][]float64) (s2.CellUnion, error) {
+	cov := s2.RegionCoverer{
+		MinLevel: 4,
+		MaxLevel: 22,
+		MaxCells: 8,
+	}
+
+	if uniqueLength(poly[0]) < 4 {
+		return nil, nil
+	}
+
+	outer := makeLoop(poly[0])
+	if outer == nil {
+		return nil, nil
+	}
+
+	err := outer.Validate()
+	if err != nil {
+		return nil, fmt.Errorf("Invalid outer loop: %s", err)
+	}
+
+	covering := cov.Covering(&region{outer})
+	return covering, nil
 }
