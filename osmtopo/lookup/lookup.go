@@ -123,8 +123,7 @@ func (l *Data) Build() error {
 
 func newLayer() *layer {
 	return &layer{
-		loops: make(map[int64]int64),
-		tree:  &segtree.Tree{},
+		tree: &segtree.Tree{},
 	}
 }
 
@@ -152,11 +151,8 @@ func (l *layer) indexPolygon(id int64, poly [][][]float64) error {
 	covering := rc.Covering(&region{outer})
 
 	l.indexLock.Lock()
-	loopId := int64(len(l.loops))
-	l.loops[loopId] = id
-
 	for _, cell := range covering {
-		l.tree.Push(uint64(cell.RangeMin()), uint64(cell.RangeMax()), loopId)
+		l.tree.Push(uint64(cell.RangeMin()), uint64(cell.RangeMax()), id)
 	}
 	l.indexLock.Unlock()
 
@@ -178,9 +174,7 @@ func (l *Data) Query(lat, lng float64, layerID string) ([]int64, error) {
 		return nil, err
 	}
 	for r := range results {
-		loop := r.(int64)
-		geomId := layer.loops[loop]
-		matches = append(matches, geomId)
+		matches = append(matches, r.(int64))
 	}
 
 	return matches, nil
