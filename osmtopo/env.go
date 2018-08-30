@@ -147,6 +147,10 @@ func (e *Env) StartServer(listen string) error {
 	mux.Handle("/api/missing", http.HandlerFunc(e.handleMissing))
 	mux.Handle("/api/coordinate", http.HandlerFunc(e.handleCoordinate))
 	mux.Handle("/api/topo/", http.HandlerFunc(e.handleTopo))
+	mux.Handle("/api/geometry/", http.HandlerFunc(e.handleGeometry))
+	mux.Handle("/api/relation/", http.HandlerFunc(e.handleRelation))
+	mux.Handle("/api/way/", http.HandlerFunc(e.handleWay))
+	mux.Handle("/api/node/", http.HandlerFunc(e.handleNode))
 	mux.Handle("/api/add", http.HandlerFunc(e.handleAdd))
 	mux.Handle("/api/delete", http.HandlerFunc(e.handleDelete))
 	mux.Handle("/api/export", http.HandlerFunc(e.handleExport))
@@ -674,6 +678,15 @@ func (e *Env) queryLookup(lookup *lookup.Data, lat, lon float64, layer string) (
 
 		contains, err := g.Contains(point)
 		if err != nil {
+			geom, e := GeometryFromGeos(g)
+			if e != nil {
+				return nil, e
+			}
+			d, e := json.Marshal(geom)
+			if e != nil {
+				return nil, e
+			}
+			fmt.Println(string(d))
 			return nil, fmt.Errorf("Contains: %s on rel %d", err, match)
 		}
 
@@ -683,4 +696,147 @@ func (e *Env) queryLookup(lookup *lookup.Data, lat, lon float64, layer string) (
 	}
 
 	return result, nil
+}
+
+func (e *Env) handleGeometry(w http.ResponseWriter, req *http.Request) {
+	parts := strings.Split(req.URL.Path, "/")
+	if len(parts) != 4 {
+		http.Error(w, "Missing ID", http.StatusNotFound)
+		return
+	}
+
+	id, err := strconv.ParseInt(parts[3], 10, 64)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	switch req.Method {
+	case "GET":
+		geom, err := e.GetGeometry("rel", id)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if geom == nil {
+			http.Error(w, "Not Found", http.StatusNotFound)
+		}
+
+		_, err = w.Write(geom.Geojson)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	case "DELETE":
+		err = e.removeGeometry("rel", id)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	default:
+		http.Error(w, fmt.Sprintf("Method not allowed: %s", req.Method), http.StatusBadRequest)
+		return
+	}
+}
+
+func (e *Env) handleRelation(w http.ResponseWriter, req *http.Request) {
+	if req.Method != "GET" {
+		http.Error(w, "Should send a GET request", http.StatusBadRequest)
+		return
+	}
+
+	parts := strings.Split(req.URL.Path, "/")
+	if len(parts) != 4 {
+		http.Error(w, "Missing ID", http.StatusNotFound)
+		return
+	}
+
+	id, err := strconv.ParseInt(parts[3], 10, 64)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	rel, err := e.GetRelation(id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if rel == nil {
+		http.Error(w, "Not Found", http.StatusNotFound)
+	}
+
+	json.NewEncoder(w).Encode(rel)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+func (e *Env) handleWay(w http.ResponseWriter, req *http.Request) {
+	if req.Method != "GET" {
+		http.Error(w, "Should send a GET request", http.StatusBadRequest)
+		return
+	}
+
+	parts := strings.Split(req.URL.Path, "/")
+	if len(parts) != 4 {
+		http.Error(w, "Missing ID", http.StatusNotFound)
+		return
+	}
+
+	id, err := strconv.ParseInt(parts[3], 10, 64)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	way, err := e.GetWay(id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if way == nil {
+		http.Error(w, "Not Found", http.StatusNotFound)
+	}
+
+	json.NewEncoder(w).Encode(way)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+func (e *Env) handleNode(w http.ResponseWriter, req *http.Request) {
+	if req.Method != "GET" {
+		http.Error(w, "Should send a GET request", http.StatusBadRequest)
+		return
+	}
+
+	parts := strings.Split(req.URL.Path, "/")
+	if len(parts) != 4 {
+		http.Error(w, "Missing ID", http.StatusNotFound)
+		return
+	}
+
+	id, err := strconv.ParseInt(parts[3], 10, 64)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	node, err := e.GetNode(id)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if node == nil {
+		http.Error(w, "Not Found", http.StatusNotFound)
+	}
+
+	json.NewEncoder(w).Encode(node)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }

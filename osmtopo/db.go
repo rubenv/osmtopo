@@ -140,6 +140,14 @@ func (e *Env) setInt(nbr string, v int64) error {
 	return e.db.Write(e.wo, wb)
 }
 
+func (e *Env) removeGeometry(prefix string, id int64) error {
+	wb := gorocksdb.NewWriteBatch()
+	defer wb.Destroy()
+	key := fmt.Sprintf("geometry/%s/%d", prefix, id)
+	wb.Delete([]byte(key))
+	return e.db.Write(e.wo, wb)
+}
+
 func (e *Env) removeGeometries(prefix string) error {
 	keys, err := e.GetGeometries(prefix)
 	if err != nil {
