@@ -197,3 +197,26 @@ func MakeCells(poly [][][]float64) (s2.CellUnion, error) {
 	covering := cov.Covering(&region{outer})
 	return covering, nil
 }
+
+func GeometryToCoverage(geom *geojson.Geometry) ([]s2.CellUnion, error) {
+	switch geom.Type {
+	case geojson.GeometryPolygon:
+		cu, err := MakeCells(geom.Polygon)
+		if err != nil {
+			return nil, err
+		}
+		return []s2.CellUnion{cu}, nil
+	case geojson.GeometryMultiPolygon:
+		result := make([]s2.CellUnion, 0)
+		for _, poly := range geom.MultiPolygon {
+			cu, err := MakeCells(poly)
+			if err != nil {
+				return nil, err
+			}
+			result = append(result, cu)
+		}
+		return result, nil
+	default:
+		return nil, fmt.Errorf("Unsupported geometry: %s", geom.Type)
+	}
+}

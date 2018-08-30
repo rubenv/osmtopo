@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/golang/geo/s2"
 	"github.com/rubenv/osmtopo/osmtopo/model"
 	"github.com/tecbot/gorocksdb"
 )
@@ -140,6 +141,14 @@ func (e *Env) setInt(nbr string, v int64) error {
 	return e.db.Write(e.wo, wb)
 }
 
+func (e *Env) removeS2Coverage(id int64) error {
+	wb := gorocksdb.NewWriteBatch()
+	defer wb.Destroy()
+	key := fmt.Sprintf("s2/%d", id)
+	wb.Delete([]byte(key))
+	return e.db.Write(e.wo, wb)
+}
+
 func (e *Env) removeGeometry(prefix string, id int64) error {
 	wb := gorocksdb.NewWriteBatch()
 	defer wb.Destroy()
@@ -227,6 +236,34 @@ func (e *Env) addGeometry(prefix string, n *model.Geometry) error {
 		return err
 	}
 	key := fmt.Sprintf("geometry/%s/%d", prefix, n.Id)
+	wb.Put([]byte(key), data)
+	return e.db.Write(e.wo, wb)
+}
+
+func (e *Env) addS2Coverage(id int64, cov []s2.CellUnion) error {
+	unions := make([]*model.S2CellUnion, len(cov))
+	for i, cu := range cov {
+		cells := make([]uint64, len(cu))
+		for j, c := range cu {
+			cells[j] = uint64(c)
+		}
+		unions[i] = &model.S2CellUnion{
+			Cells: cells,
+		}
+	}
+
+	n := &model.S2Coverage{
+		Id:     id,
+		Unions: unions,
+	}
+
+	wb := gorocksdb.NewWriteBatch()
+	defer wb.Destroy()
+	data, err := n.Marshal()
+	if err != nil {
+		return err
+	}
+	key := fmt.Sprintf("s2/%d", n.Id)
 	wb.Put([]byte(key), data)
 	return e.db.Write(e.wo, wb)
 }
@@ -479,4 +516,33 @@ func (e *Env) iterRelations() (*relationIter, error) {
 		it:     it,
 		prefix: []byte("relation/"),
 	}, nil
+}
+
+func (e *Env) GetS2Coverage(id int64) ([]s2.CellUnion, error) {
+	n, err := e.db.Get(e.ro, []byte(fmt.Sprintf("s2/%d", id)))
+	if err != nil {
+		return nil, err
+	}
+	defer n.Free()
+
+	if n.Size() == 0 {
+		return nil, nil
+	}
+
+	cov := &model.S2Coverage{}
+	err = cov.Unmarshal(n.Data())
+	if err != nil {
+		return nil, err
+	}
+
+	unions := make([]s2.CellUnion, 0)
+	for _, scu := range cov.Unions {
+		cu := make(s2.CellUnion, len(scu.Cells))
+		for i, c := range scu.Cells {
+			cu[i] = s2.CellID(c)
+		}
+		unions = append(unions, cu)
+	}
+
+	return unions, nil
 }

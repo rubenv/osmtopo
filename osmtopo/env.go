@@ -20,7 +20,6 @@ import (
 
 	"github.com/gobuffalo/packr"
 	lru "github.com/hashicorp/golang-lru"
-	geojson "github.com/paulmach/go.geojson"
 	"github.com/paulsmith/gogeos/geos"
 	"github.com/rubenv/osmtopo/osmtopo/lookup"
 	"github.com/rubenv/osmtopo/osmtopo/model"
@@ -147,6 +146,7 @@ func (e *Env) StartServer(listen string) error {
 	mux.Handle("/api/missing", http.HandlerFunc(e.handleMissing))
 	mux.Handle("/api/coordinate", http.HandlerFunc(e.handleCoordinate))
 	mux.Handle("/api/topo/", http.HandlerFunc(e.handleTopo))
+	mux.Handle("/api/coverage/", http.HandlerFunc(e.handleCoverage))
 	mux.Handle("/api/geometry/", http.HandlerFunc(e.handleGeometry))
 	mux.Handle("/api/relation/", http.HandlerFunc(e.handleRelation))
 	mux.Handle("/api/way/", http.HandlerFunc(e.handleWay))
@@ -249,8 +249,7 @@ func (e *Env) updateData() error {
 }
 
 func (e *Env) loadLookup() error {
-
-	lookup := lookup.New()
+	lookupData := lookup.New()
 	for _, layer := range e.config.Layers {
 		levelNeeded := make(map[int]bool)
 		for _, admin := range layer.AdminLevels {
@@ -300,18 +299,35 @@ func (e *Env) loadLookup() error {
 						continue
 					}
 
-					geom, err := ToGeometryCached("rel", rel, e)
-					if err != nil {
-						// Broken geometry, skip!
-						continue
-					}
-
-					feat := geojson.NewFeature(geom)
-					feat.ID = rel.Id
-
-					err = lookup.IndexFeature(layer.ID, feat)
+					cov, err := e.GetS2Coverage(rel.Id)
 					if err != nil {
 						return err
+					}
+
+					if cov == nil || len(cov) == 0 {
+						geom, err := ToGeometryCached("rel", rel, e)
+						if err != nil {
+							// Broken geometry, skip!
+							continue
+						}
+
+						c, err := lookup.GeometryToCoverage(geom)
+						if err != nil {
+							return err
+						}
+						cov = c
+
+						err = e.addS2Coverage(rel.Id, cov)
+						if err != nil {
+							return err
+						}
+					}
+
+					for _, cu := range cov {
+						err = lookupData.IndexCells(layer.ID, rel.Id, cu)
+						if err != nil {
+							return err
+						}
 					}
 				}
 
@@ -325,12 +341,12 @@ func (e *Env) loadLookup() error {
 		}
 	}
 
-	err := lookup.Build()
+	err := lookupData.Build()
 	if err != nil {
 		return err
 	}
 
-	e.lookup = lookup
+	e.lookup = lookupData
 
 	return nil
 }
@@ -696,6 +712,47 @@ func (e *Env) queryLookup(lookup *lookup.Data, lat, lon float64, layer string) (
 	}
 
 	return result, nil
+}
+
+func (e *Env) handleCoverage(w http.ResponseWriter, req *http.Request) {
+	parts := strings.Split(req.URL.Path, "/")
+	if len(parts) != 4 {
+		http.Error(w, "Missing ID", http.StatusNotFound)
+		return
+	}
+
+	id, err := strconv.ParseInt(parts[3], 10, 64)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	switch req.Method {
+	case "GET":
+		cov, err := e.GetS2Coverage(id)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if cov == nil {
+			http.Error(w, "Not Found", http.StatusNotFound)
+		}
+
+		err = json.NewEncoder(w).Encode(cov)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	case "DELETE":
+		err = e.removeS2Coverage(id)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	default:
+		http.Error(w, fmt.Sprintf("Method not allowed: %s", req.Method), http.StatusBadRequest)
+		return
+	}
 }
 
 func (e *Env) handleGeometry(w http.ResponseWriter, req *http.Request) {

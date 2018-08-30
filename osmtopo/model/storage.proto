@@ -46,6 +46,15 @@ message Geometry {
     bytes geojson = 2;
 }
 
+message S2Coverage {
+    sint64 id = 1;
+    repeated S2CellUnion unions = 2;
+}
+
+message S2CellUnion {
+    repeated uint64 cells = 1;
+}
+
 message MissingCoordinate {
     string id  = 1;
     double lat = 2;
